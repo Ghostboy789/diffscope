@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Install diffscope and test dependencies
+        run: |
+          package_dir=$(mktemp -d)
+          # Keep benchmark sources out of setuptools' package discovery.
+          cp -R pyproject.toml diffscope "$package_dir"
+          python -m pip install "$package_dir[dev]"
+      - run: ruff check .
+      - run: python -m pytest -q

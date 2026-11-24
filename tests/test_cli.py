@@ -1,4 +1,5 @@
 import json
+import subprocess
 import sys
 from pathlib import Path
 from types import ModuleType
@@ -7,7 +8,7 @@ import duckdb
 import pytest
 
 from diffscope.cli import _parser, _table_input, main
-from diffscope.dbt import load_models
+from diffscope.dbt import COMMENT_MARKER, load_models, post_pr_comment
 from diffscope.result import DiffResult
 
 
@@ -184,3 +185,45 @@ def test_dbt_outputs_one_markdown_report(dbt_project, contract_fakes, capsys):
         capsys.readouterr().out
         == f"orders: {changed} changed\n\n---\n\ncustomers: {changed} changed\n"
     )
+
+
+@pytest.mark.parametrize("previous_id", [None, 27])
+def test_sticky_comment(tmp_path, monkeypatch, previous_id):
+    report = tmp_path / "report.md"
+    report.write_text("3 rows changed\n", encoding="utf-8")
+    unrelated = [
+        {"id": 10, "user": {"login": "person"}, "body": f"{COMMENT_MARKER}\nHello"},
+        {"id": 11, "user": {"login": "github-actions[bot]"}, "body": f"About {COMMENT_MARKER}"},
+    ]
+    previous = []
+    if previous_id is not None:
+        previous.append(
+            {
+                "id": previous_id,
+                "user": {"login": "github-actions[bot]"},
+                "body": f"{COMMENT_MARKER}\nOld report",
+            }
+        )
+    writes = []
+    endpoint = "repos/owner/demo/issues/23/comments"
+
+    def gh(args, *, check, text, stdout=None, input=None):
+        assert check and text
+        if stdout == subprocess.PIPE:
+            assert args == ["gh", "api", endpoint, "--paginate", "--slurp"]
+            return subprocess.CompletedProcess(args, 0, json.dumps([unrelated, previous]))
+        assert args[:2] == ["gh", "api"]
+        assert args[5:] == ["--input", "-", "--silent"]
+        writes.append((args[2], args[4], json.loads(input)["body"]))
+        return subprocess.CompletedProcess(args, 0)
+
+    monkeypatch.setattr(subprocess, "run", gh)
+    post_pr_comment(str(report), "owner/demo", "23")
+
+    expected_body = f"{COMMENT_MARKER}\n3 rows changed\n"
+    if previous_id is None:
+        assert writes == [(endpoint, "POST", expected_body)]
+    else:
+        assert writes == [
+            (f"repos/owner/demo/issues/comments/{previous_id}", "PATCH", expected_body)
+        ]

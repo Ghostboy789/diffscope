@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+
+COMMENT_MARKER = "<!-- diffscope:dbt -->"
 
 
 @dataclass(frozen=True)
@@ -64,3 +67,35 @@ def load_models(project_dir: Path, names: list[str], keys: list[str] | None) -> 
             Model(name, node.get("alias") or node["name"], node.get("database"), model_keys)
         )
     return models
+
+
+def post_pr_comment(report: str, repository: str, pr_number: str) -> None:
+    """Create or update the workflow bot's diff comment using gh."""
+    body = f"{COMMENT_MARKER}\n{Path(report).read_text(encoding='utf-8')}"
+    endpoint = f"repos/{repository}/issues/{pr_number}/comments"
+    response = subprocess.run(
+        ["gh", "api", endpoint, "--paginate", "--slurp"],
+        check=True,
+        stdout=subprocess.PIPE,
+        text=True,
+    )
+    comment_id = next(
+        (
+            comment["id"]
+            for page in json.loads(response.stdout)
+            for comment in page
+            if (comment.get("user") or {}).get("login") == "github-actions[bot]"
+            and (comment.get("body") or "").partition("\n")[0] == COMMENT_MARKER
+        ),
+        None,
+    )
+    method = "POST"
+    if comment_id is not None:
+        method = "PATCH"
+        endpoint = f"repos/{repository}/issues/comments/{comment_id}"
+    subprocess.run(
+        ["gh", "api", endpoint, "--method", method, "--input", "-", "--silent"],
+        input=json.dumps({"body": body}),
+        check=True,
+        text=True,
+    )

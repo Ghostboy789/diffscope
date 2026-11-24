@@ -1,0 +1,66 @@
+name: Diffscope dbt comparison
+description: Compare two built DuckDB schemas and publish a pull request comment.
+# The calling job needs pull-requests: write and a per-PR concurrency group.
+inputs:
+  project-dir:
+    description: dbt project directory containing target/manifest.json.
+    default: .
+  models:
+    description: Whitespace-separated model names or manifest IDs.
+    required: true
+  base-schema:
+    description: Schema containing the base versions of the models.
+    required: true
+  target-schema:
+    description: Schema containing the target versions of the models.
+    required: true
+  keys:
+    description: Whitespace-separated keys. Defaults to each model's meta.diffscope_keys.
+    default: ''
+  db:
+    description: DuckDB file. Defaults to <catalog>.duckdb in the project directory.
+    default: ''
+runs:
+  using: composite
+  steps:
+    - name: Compare dbt models
+      id: compare
+      shell: bash
+      env:
+        PROJECT_DIR: ${{ inputs.project-dir }}
+        DBT_MODELS: ${{ inputs.models }}
+        BASE_SCHEMA: ${{ inputs.base-schema }}
+        TARGET_SCHEMA: ${{ inputs.target-schema }}
+        DBT_KEYS: ${{ inputs.keys }}
+        DBT_DATABASE: ${{ inputs.db }}
+      run: |
+        work_dir=$(mktemp -d "$RUNNER_TEMP/diffscope.XXXXXX")
+        # Keep benchmark sources out of setuptools' package discovery.
+        mkdir "$work_dir/package"
+        cp -R "$GITHUB_ACTION_PATH/pyproject.toml" "$GITHUB_ACTION_PATH/diffscope" "$work_dir/package"
+        python -m venv "$work_dir/venv"
+        "$work_dir/venv/bin/python" -m pip install "$work_dir/package"
+
+        read -r -d '' -a models <<< "$DBT_MODELS" || true
+        read -r -d '' -a keys <<< "$DBT_KEYS" || true
+        args=(dbt --project-dir "$PROJECT_DIR" --models "${models[@]}"
+          --base-schema "$BASE_SCHEMA" --target-schema "$TARGET_SCHEMA"
+          --output "$work_dir/report.md")
+        if [[ -n "$DBT_DATABASE" ]]; then
+          args+=(--db "$DBT_DATABASE")
+        fi
+        for key in "${keys[@]}"; do
+          args+=(--key "$key")
+        done
+        "$work_dir/venv/bin/diffscope" "${args[@]}"
+        printf 'work-dir=%s\n' "$work_dir" >> "$GITHUB_OUTPUT"
+    - name: Publish pull request comment
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        DIFFSCOPE_RUN: ${{ steps.compare.outputs.work-dir }}
+      run: |
+        "$DIFFSCOPE_RUN/venv/bin/python" -I -c \
+          'from sys import argv; from diffscope.dbt import post_pr_comment; post_pr_comment(*argv[1:])' \
+          "$DIFFSCOPE_RUN/report.md" "$GITHUB_REPOSITORY" "${PR_NUMBER:?Pull request required}"
