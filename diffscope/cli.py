@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import math
+from glob import escape
 from pathlib import Path
 
 import duckdb
@@ -53,7 +54,7 @@ def _table_input(source: str) -> str:
         return source
     if not path.is_file():
         raise FileNotFoundError(f"Input file does not exist: {path}")
-    literal = str(path.resolve()).replace("'", "''")
+    literal = escape(str(path.resolve())).replace("'", "''")
     return f"(SELECT * FROM {reader}('{literal}'))"
 
 

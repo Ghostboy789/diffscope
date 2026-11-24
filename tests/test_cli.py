@@ -78,9 +78,10 @@ def test_table_inputs(tmp_path):
 
 def test_tables_reads_csv_and_parquet(tmp_path, contract_fakes):
     calls, result = contract_fakes
-    before = tmp_path / "it's here.CSV"
+    before = tmp_path / "it's here[1].CSV"
     before.write_text("id,name\n1,old\n", encoding="utf-8")
-    after = tmp_path / "after.parquet"
+    (tmp_path / "it's here1.CSV").write_text("id,name\n2,other\n", encoding="utf-8")
+    after = tmp_path / "after?.parquet"
     with duckdb.connect() as con:
         con.sql("SELECT 1 AS id, 'new' AS name").write_parquet(str(after))
     output = tmp_path / "report.json"
