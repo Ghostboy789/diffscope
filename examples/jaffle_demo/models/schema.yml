@@ -1,0 +1,17 @@
+version: 2
+
+models:
+  - name: orders
+    config:
+      meta:
+        diffscope_keys: [order_id]
+    columns:
+      - name: order_id
+        data_tests: [unique, not_null]
+  - name: customers
+    config:
+      meta:
+        diffscope_keys: [customer_id]
+    columns:
+      - name: customer_id
+        data_tests: [unique, not_null]

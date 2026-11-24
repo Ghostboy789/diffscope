@@ -1,0 +1,8 @@
+name: jaffle_demo
+version: '1.0.0'
+config-version: 2
+profile: jaffle_demo
+
+models:
+  jaffle_demo:
+    +materialized: table

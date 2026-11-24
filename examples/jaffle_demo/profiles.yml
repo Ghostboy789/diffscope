@@ -1,0 +1,11 @@
+jaffle_demo:
+  target: baseline
+  outputs:
+    baseline:
+      type: duckdb
+      path: jaffle_demo.duckdb
+      schema: baseline
+    candidate:
+      type: duckdb
+      path: jaffle_demo.duckdb
+      schema: candidate
