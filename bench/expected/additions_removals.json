@@ -1,0 +1,20 @@
+{
+  "before_rows": 1000,
+  "after_rows": 1010,
+  "added_rows": 20,
+  "removed_rows": 10,
+  "changed_rows": 0,
+  "unchanged_rows": 990,
+  "schema": {
+    "added_columns": [],
+    "removed_columns": [],
+    "type_changes": {}
+  },
+  "column_changes": {},
+  "numeric_shifts": {
+    "amount": {
+      "before_sum": 120000,
+      "after_sum": 121200
+    }
+  }
+}

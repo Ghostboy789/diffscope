@@ -1,0 +1,15 @@
+{
+  "before_rows": 1000,
+  "after_rows": 1000,
+  "added_rows": 0,
+  "removed_rows": 0,
+  "changed_rows": 0,
+  "unchanged_rows": 1000,
+  "schema": {
+    "added_columns": [],
+    "removed_columns": [],
+    "type_changes": {}
+  },
+  "column_changes": {},
+  "numeric_shifts": {}
+}

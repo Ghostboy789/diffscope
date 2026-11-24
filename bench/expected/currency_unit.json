@@ -1,0 +1,32 @@
+{
+  "before_rows": 1000,
+  "after_rows": 1000,
+  "added_rows": 0,
+  "removed_rows": 0,
+  "changed_rows": 10,
+  "unchanged_rows": 990,
+  "schema": {
+    "added_columns": [],
+    "removed_columns": [],
+    "type_changes": {}
+  },
+  "column_changes": {
+    "amount": {
+      "changed_rows": 10,
+      "null_to_value": 0,
+      "value_to_null": 0
+    }
+  },
+  "numeric_shifts": {
+    "amount": {
+      "before_sum": 120000,
+      "after_sum": 219000,
+      "before_mean": 120,
+      "after_mean": 219,
+      "before_median": 120,
+      "after_median": 120,
+      "before_p95": 140,
+      "after_p95": 140
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "before_rows": 1000,
+  "after_rows": 1000,
+  "added_rows": 0,
+  "removed_rows": 0,
+  "changed_rows": 20,
+  "unchanged_rows": 980,
+  "schema": {
+    "added_columns": [],
+    "removed_columns": [],
+    "type_changes": {}
+  },
+  "column_changes": {
+    "note": {
+      "changed_rows": 20,
+      "null_to_value": 10,
+      "value_to_null": 10
+    }
+  },
+  "numeric_shifts": {}
+}

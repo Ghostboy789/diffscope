@@ -1,0 +1,19 @@
+{
+  "before_rows": 1000,
+  "after_rows": 1010,
+  "error": "KeyNotUniqueError",
+  "duplicate_keys": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900,
+    1000
+  ],
+  "duplicate_key_count": 10,
+  "example_count": 3
+}
