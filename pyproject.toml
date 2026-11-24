@@ -1,0 +1,19 @@
+[project]
+name = "diffscope"
+version = "0.1.0"
+description = "Explain what a change to a SQL table actually did to the data, as a pull-request comment."
+requires-python = ">=3.10"
+dependencies = ["duckdb>=1.1"]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff"]
+
+[project.scripts]
+diffscope = "diffscope.cli:main"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

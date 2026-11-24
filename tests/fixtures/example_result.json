@@ -1,0 +1,77 @@
+{
+ "before_name": "orders (main)",
+ "after_name": "orders (branch)",
+ "keys": [
+  "order_id"
+ ],
+ "before_rows": 1000,
+ "after_rows": 1004,
+ "added_rows": 6,
+ "removed_rows": 2,
+ "changed_rows": 37,
+ "unchanged_rows": 961,
+ "schema": {
+  "added_columns": [
+   "discount_code"
+  ],
+  "removed_columns": [],
+  "type_changes": {
+   "status": [
+    "INTEGER",
+    "VARCHAR"
+   ]
+  }
+ },
+ "column_changes": [
+  {
+   "column": "amount",
+   "changed_rows": 31,
+   "null_to_value": 0,
+   "value_to_null": 2
+  },
+  {
+   "column": "status",
+   "changed_rows": 6,
+   "null_to_value": 0,
+   "value_to_null": 0
+  }
+ ],
+ "numeric_shifts": [
+  {
+   "column": "amount",
+   "before_mean": 642.0,
+   "after_mean": 618.5,
+   "before_median": 540.0,
+   "after_median": 520.0,
+   "before_p95": 1490.0,
+   "after_p95": 1402.0,
+   "before_sum": 642000.0,
+   "after_sum": 620974.0
+  }
+ ],
+ "samples": {
+  "added": [
+   {
+    "order_id": 1001,
+    "amount": 120.0,
+    "status": "placed"
+   }
+  ],
+  "removed": [
+   {
+    "order_id": 17,
+    "amount": 980.0,
+    "status": "2"
+   }
+  ],
+  "changed": [
+   {
+    "order_id": 42,
+    "column": "amount",
+    "before": 700.0,
+    "after": 630.0
+   }
+  ]
+ },
+ "elapsed_seconds": 0.84
+}
