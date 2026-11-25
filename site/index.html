@@ -9,47 +9,88 @@
   <meta property="og:title" content="diffscope · A currency bug in a dbt pull request">
   <meta property="og:description" content="The PR comment traced a change from 760 to 76,000 cents on one order into the customer's total. See the data and how to run the comparison.">
   <meta property="og:type" content="website">
+  <link rel="stylesheet" href="https://unpkg.com/lenis@1.3.28/dist/lenis.css">
   <link rel="stylesheet" href="tokens.css">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="pinned.css">
+  <link rel="stylesheet" href="backdrop.css">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&amp;display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800;900&amp;family=Instrument+Sans:wght@400;500&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap">
 </head>
 <body id="top">
   <a class="skip-link" href="#finding">Skip to the finding</a>
-  <header class="masthead page-width">
-    <a class="wordmark" href="#top">diffscope</a>
-    <nav aria-label="Page navigation">
-      <a href="#method">How it works</a>
-      <a href="#benchmark">Benchmark</a>
-      <a href="#quick-start">Quick start</a>
-      <a href="https://github.com/Ghostboy789/diffscope">GitHub</a>
-    </nav>
+  <header class="masthead">
+    <div class="page-width masthead-inner">
+      <div class="mast-brand"><a class="wordmark" href="#top">
+        <svg aria-hidden="true" viewBox="0 0 36 32"><path d="M2 1h10v4H6v22h6v4H2zM34 1H24v4h6v22h-6v4h10zM10 8h12v4H10zm8 8h4v4h4v4h-4v4h-4v-4h-4v-4h4z"/></svg>
+        diffscope
+      </a><span class="mast-description">dbt pull request review</span></div>
+      <nav aria-label="Page navigation">
+        <a href="#method">How it works</a>
+        <a href="#benchmark">Benchmark</a>
+        <a href="#quick-start">Quick start</a>
+      </nav>
+    </div>
   </header>
   <main>
-    <section class="opening page-width" id="finding" aria-labelledby="headline">
-      <div class="opening-meta">
-        <p class="label">dbt pull request review</p>
-        <p class="model-path"><span>jaffle_demo</span> / orders</p>
+    <section class="opening" id="finding" aria-labelledby="headline">
+      <div class="page-width scoreboard">
+        <p class="address"><a href="https://github.com/Ghostboy789/diffscope/pull/1">PR #1</a> · jaffle_demo/orders · order 103 · amount_cents</p>
+        <div class="hero-main">
+          <div class="readout">
+            <p class="baseline">Before <strong>760 cents</strong> <span aria-hidden="true">→</span> After</p>
+            <div class="score">
+              <span class="sr-only">After, in cents</span>
+              <span class="odometer">76,000</span>
+              <span class="stamp">×100</span>
+            </div>
+            <h1 id="headline">One order. One wrong unit.</h1>
+            <p class="hero-subline">diffscope caught it before merge.</p>
+          </div>
+          <figure class="scope">
+            <div class="scope-view">
+              <svg viewBox="0 0 360 216" aria-hidden="true" class="scope-map">
+                <defs><pattern id="scope-grid" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24"/></pattern></defs>
+                <rect width="360" height="216" fill="url(#scope-grid)"/>
+                <g class="sight">
+                  <path d="M0 84h360M216 0v216" stroke-dasharray="2 6"/>
+                  <circle cx="216" cy="84" r="55" stroke-dasharray="2 5"/>
+                  <path d="M216 23v10m0 102v10m-61-61h10m102 0h10"/>
+                </g>
+                <path class="scope-corners" d="M1 21V1h20m318 0h20v20M1 195v20h20m318 0h20v-20"/>
+                <g class="scope-points"><circle cx="48" cy="84" r="4"/><circle cx="132" cy="84" r="4"/><circle class="scope-hit" cx="216" cy="84" r="40"/><circle cx="300" cy="84" r="4"/><circle cx="48" cy="168" r="4"/><circle cx="132" cy="168" r="4"/><circle cx="216" cy="168" r="4"/><circle cx="300" cy="168" r="4"/></g>
+              </svg>
+              <canvas class="scope-canvas" aria-hidden="true"></canvas>
+            </div>
+            <figcaption><span>8 orders</span><span class="scope-key">Order 103</span></figcaption>
+          </figure>
+        </div>
+        <div class="hero-foot">
+          <div class="hero-actions">
+            <a class="action primary" href="#catch-start">See the catch ↓</a>
+            <a class="action secondary" href="https://github.com/Ghostboy789/diffscope">GitHub <span aria-hidden="true">↗</span></a>
+          </div>
+          <p class="demo-source">Exact values from the synthetic Jaffle Shop demo.</p>
+        </div>
       </div>
-      <h1 id="headline">diffscope caught order <span class="number">103</span> jumping from <span class="number">760</span> to <span class="number correction">76,000</span> cents on <a href="https://github.com/Ghostboy789/diffscope/pull/1">PR <span class="number">#1</span></a>.</h1>
-      <div class="opening-source">
-        <p class="byline">Medhansh Shekhawat</p>
-        <p class="source">Exact values from the synthetic Jaffle Shop demo.</p>
-      </div>
+      <span id="catch-start" class="catch-anchor" aria-hidden="true"></span>
     </section>
 <section id="catch" class="catch-section" aria-labelledby="catch-heading">
   <div class="catch-stage">
     <header class="catch-header">
       <h2 id="catch-heading">Reading the PR comment</h2>
-      <span class="catch-position" aria-hidden="true"></span>
+      <span class="catch-repo">
+        <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="M5 5v10m10 0V9a6 6 0 0 0-6-6"/><circle cx="5" cy="3" r="2"/><circle cx="5" cy="17" r="2"/><circle cx="15" cy="17" r="2"/></svg>
+        jaffle_demo <b>#1</b>
+      </span>
     </header>
 
     <div class="catch-steps">
-      <div class="catch-step">
+      <article class="catch-step">
         <div class="catch-note">
+          <span class="catch-position" aria-hidden="true"><b>1</b> / 5</span>
           <h3>The row counts hold</h3>
           <p>Both models kept the same keys. The comment still found changes within matching rows.</p>
         </div>
@@ -58,80 +99,82 @@
             <caption>Rows by model</caption>
             <thead><tr><th scope="col">Model</th><th scope="col">Before</th><th scope="col">After</th><th scope="col">Changed</th></tr></thead>
             <tbody>
-              <tr><th scope="row">orders</th><td>8</td><td>8</td><td>2</td></tr>
-              <tr><th scope="row">customers</th><td>4</td><td>4</td><td>1</td></tr>
+              <tr><th scope="row"><i class="catch-gutter" aria-hidden="true">+</i>orders</th><td>8</td><td>8</td><td class="catch-added"><span data-catch-scramble>2</span></td></tr>
+              <tr><th scope="row"><i class="catch-gutter" aria-hidden="true">+</i>customers</th><td>4</td><td>4</td><td class="catch-added"><span data-catch-scramble>1</span></td></tr>
             </tbody>
           </table>
         </div>
-      </div>
+      </article>
 
-      <div class="catch-step">
+      <article class="catch-step">
         <div class="catch-note">
+          <span class="catch-position" aria-hidden="true"><b>2</b> / 5</span>
           <h3>The intended rename</h3>
           <p>On order <code>101</code>, the change to <code>status</code> adds a single letter.</p>
         </div>
         <figure class="catch-evidence">
           <figcaption>Order <code>101</code> · <code>status</code></figcaption>
-          <dl class="catch-values">
+          <dl class="catch-readout">
             <div><dt>Before</dt><dd>complete</dd></div>
-            <div><dt>After</dt><dd>complete<ins>d</ins></dd></div>
+            <div><dt><i class="catch-gutter" aria-hidden="true">+</i>After</dt><dd><span data-catch-scramble>complete</span><ins>d</ins></dd></div>
           </dl>
         </figure>
-      </div>
+      </article>
 
-      <div class="catch-step">
+      <article class="catch-step">
         <div class="catch-note">
+          <span class="catch-position" aria-hidden="true"><b>3</b> / 5</span>
           <h3>The currency bug</h3>
           <p>Order <code>103</code> was already in cents. Its amount grew by a factor of <code class="catch-effect">100</code>.</p>
         </div>
-        <figure class="catch-evidence">
+        <figure class="catch-evidence" data-catch-zoom>
           <figcaption>Order <code>103</code> · <code>amount_cents</code></figcaption>
-          <dl class="catch-values">
-            <div><dt>Before</dt><dd>760
-              <svg class="catch-bar" viewBox="0 0 80000 12" preserveAspectRatio="none" aria-hidden="true"><rect width="760" height="12"/></svg>
-            </dd></div>
-            <div><dt>After</dt><dd class="catch-effect">76,000
-              <svg class="catch-bar" viewBox="0 0 80000 12" preserveAspectRatio="none" aria-hidden="true"><rect width="76000" height="12"/></svg>
-            </dd></div>
+          <dl class="catch-readout">
+            <div><dt>Before</dt><dd>760<span class="catch-track" aria-hidden="true"><i class="catch-order-before"></i></span></dd></div>
+            <div><dt><i class="catch-gutter" aria-hidden="true">+</i>After</dt><dd class="catch-effect"><span data-catch-scramble>76,000</span><span class="catch-track" aria-hidden="true"><i class="catch-order-after"></i></span></dd></div>
           </dl>
+          <div class="catch-axis" aria-hidden="true"><i class="catch-axis-rule"></i><span>0</span><span class="catch-axis-mid">40,000</span><span class="catch-axis-end">80,000</span></div>
         </figure>
-      </div>
+      </article>
 
-      <div class="catch-step">
+      <article class="catch-step">
         <div class="catch-note">
+          <span class="catch-position" aria-hidden="true"><b>4</b> / 5</span>
           <h3>The customer total follows</h3>
           <p>Order <code>103</code> belongs to customer <code>2</code>. The higher order amount carries into the <code>customers</code> model.</p>
         </div>
-        <figure class="catch-evidence">
+        <figure class="catch-evidence" data-catch-customer>
           <figcaption>Customer <code>2</code> · <code>total_amount_cents</code></figcaption>
-          <dl class="catch-values">
-            <div><dt>Before</dt><dd>1,250
-              <svg class="catch-bar" viewBox="0 0 80000 12" preserveAspectRatio="none" aria-hidden="true"><rect width="1250" height="12"/></svg>
-            </dd></div>
-            <div><dt>After</dt><dd class="catch-effect">76,490
-              <svg class="catch-bar" viewBox="0 0 80000 12" preserveAspectRatio="none" aria-hidden="true"><rect width="76490" height="12"/></svg>
-            </dd></div>
+          <div class="catch-lineage">
+            <svg viewBox="0 0 28 48" preserveAspectRatio="none" aria-hidden="true"><path d="M24 2H5V46H24"/></svg>
+            <span>Order 103 <b data-catch-scramble>76,000</b></span>
+            <span>Customer 2</span>
+          </div>
+          <dl class="catch-readout">
+            <div><dt>Before</dt><dd>1,250<span class="catch-track" aria-hidden="true"><i class="catch-customer-before"></i></span></dd></div>
+            <div><dt><i class="catch-gutter" aria-hidden="true">+</i>After</dt><dd class="catch-effect"><span data-catch-count>76,490</span><span class="catch-track" aria-hidden="true"><i class="catch-customer-after"></i></span></dd></div>
           </dl>
         </figure>
-      </div>
+      </article>
 
-      <div class="catch-step">
+      <article class="catch-step">
         <div class="catch-note">
+          <span class="catch-position" aria-hidden="true"><b>5</b> / 5</span>
           <h3>Across all orders</h3>
           <p>The sum of <code>amount_cents</code> rose <code class="catch-effect">1,361.8%</code>. A single order moved both the mean and the upper end of the distribution.</p>
         </div>
         <div class="catch-evidence">
           <table class="catch-table">
-            <caption>All orders · <code>amount_cents</code></caption>
+            <caption>All orders · <code data-catch-scramble>amount_cents</code></caption>
             <thead><tr><th scope="col">Statistic</th><th scope="col">Before</th><th scope="col">After</th></tr></thead>
             <tbody>
-              <tr><th scope="row">Sum</th><td>5,525.0</td><td class="catch-effect">80,765.0</td></tr>
-              <tr><th scope="row">Mean</th><td>690.62</td><td class="catch-effect">10,095.62</td></tr>
-              <tr><th scope="row">P95</th><td>1,045.0</td><td class="catch-effect">49,802.5</td></tr>
+              <tr><th scope="row"><i class="catch-gutter" aria-hidden="true">+</i>Sum</th><td>5,525.0</td><td class="catch-effect"><span data-catch-count>80,765.0</span></td></tr>
+              <tr><th scope="row"><i class="catch-gutter" aria-hidden="true">+</i>Mean</th><td>690.62</td><td class="catch-effect"><span data-catch-count>10,095.62</span></td></tr>
+              <tr><th scope="row"><i class="catch-gutter" aria-hidden="true">+</i>P95</th><td>1,045.0</td><td class="catch-effect"><span data-catch-count>49,802.5</span></td></tr>
             </tbody>
           </table>
         </div>
-      </div>
+      </article>
     </div>
   </div>
   <footer class="catch-source">
@@ -170,7 +213,7 @@
                 <tr><th scope="row">amount_cents</th><td>1</td></tr>
               </tbody>
             </table>
-            <table class="data-table">
+            <table class="data-table numeric-shifts">
               <caption>Numeric shifts <code>amount_cents</code></caption>
               <thead><tr><th scope="col">Statistic</th><th scope="col">Before</th><th scope="col">After</th></tr></thead>
               <tbody>
@@ -207,7 +250,7 @@
               <thead><tr><th scope="col">Column</th><th scope="col">Changed rows</th></tr></thead>
               <tbody><tr><th scope="row">total_amount_cents</th><td>1</td></tr></tbody>
             </table>
-            <table class="data-table">
+            <table class="data-table numeric-shifts">
               <caption>Numeric shifts <code>total_amount_cents</code></caption>
               <thead><tr><th scope="col">Statistic</th><th scope="col">Before</th><th scope="col">After</th></tr></thead>
               <tbody>
@@ -248,9 +291,18 @@
           <caption>Time to compare two tables</caption>
           <thead><tr><th scope="col">Rows per side</th><th scope="col">Changed rows</th><th scope="col">Wall time (s)</th></tr></thead>
           <tbody>
-            <tr><th scope="row">100,000</th><td>1,000</td><td>0.023</td></tr>
-            <tr><th scope="row">1,000,000</th><td>10,000</td><td>0.084</td></tr>
-            <tr><th scope="row">10,000,000</th><td>100,000</td><td>0.655</td></tr>
+            <tr>
+              <th scope="row">100,000</th><td>1,000</td>
+              <td><span class="timing-value">0.023</span><svg class="timing-track" viewBox="0 0 655 8" preserveAspectRatio="none" aria-hidden="true"><rect width="23" height="8"/></svg></td>
+            </tr>
+            <tr>
+              <th scope="row">1,000,000</th><td>10,000</td>
+              <td><span class="timing-value">0.084</span><svg class="timing-track" viewBox="0 0 655 8" preserveAspectRatio="none" aria-hidden="true"><rect width="84" height="8"/></svg></td>
+            </tr>
+            <tr>
+              <th scope="row">10,000,000</th><td>100,000</td>
+              <td><span class="timing-value">0.655</span><svg class="timing-track" viewBox="0 0 655 8" preserveAspectRatio="none" aria-hidden="true"><rect width="655" height="8"/></svg></td>
+            </tr>
           </tbody>
         </table>
         <figcaption class="figure-note">DuckDB <span class="number">2.0.1</span> on <code>Darwin arm64</code> with a <span class="number">4 GB</span> memory limit. Each time is a single wall-clock observation and excludes table creation. A confidence interval requires repeated runs.</figcaption>
@@ -265,16 +317,16 @@
       </header>
       <div class="evidence">
         <table class="data-table scenarios" aria-labelledby="scenarios-title">
-          <thead><tr><th scope="col">Scenario</th><th scope="col">Expected result</th></tr></thead>
+          <thead><tr><th scope="col">Scenario</th><th scope="col">Expected result</th><th scope="col"><span class="sr-only">Expectation</span></th></tr></thead>
           <tbody>
-            <tr><th scope="row">identical</th><td>1,000 unchanged rows<small>Equal values, including two NULLs, stay unchanged.</small></td></tr>
-            <tr><th scope="row">value_changes</th><td>10 changed rows, all in amount<small>Changes are counted at the row and column level.</small></td></tr>
-            <tr><th scope="row">additions_removals</th><td>20 added, 10 removed, 0 changed<small>Rows are matched by key, and the sum reflects rows added or removed.</small></td></tr>
-            <tr><th scope="row">null_flips</th><td>20 changed, with 10 flips in each direction<small>NULL to value and value to NULL are counted separately.</small></td></tr>
-            <tr><th scope="row">retyped_column</th><td>amount changes from INTEGER to VARCHAR, with 0 changed rows<small>A type change is reported even when the text values match.</small></td></tr>
-            <tr><th scope="row">renamed_column</th><td>memo added, note removed, 0 changed rows<small>A rename appears as an added column and a removed column.</small></td></tr>
-            <tr><th scope="row">fanout_join</th><td>10 duplicate keys, with 3 examples in the error<small>A join fanout fails the uniqueness check before comparison.</small></td></tr>
-            <tr><th scope="row">currency_unit</th><td>10 changed rows, sum rises from 120,000 to 219,000, mean rises from 120 to 219<small>A unit error shifts the sum and mean even when the median and P95 stay fixed.</small></td></tr>
+            <tr><th scope="row"><span class="log-name">identical</span></th><td><span class="log-result">1,000 unchanged rows</span><small>Equal values, including two NULLs, stay unchanged.</small></td><td><span class="known">known</span></td></tr>
+            <tr><th scope="row"><span class="log-name">value_changes</span></th><td><span class="log-result">10 changed rows, all in amount</span><small>Changes are counted at the row and column level.</small></td><td><span class="known">known</span></td></tr>
+            <tr><th scope="row"><span class="log-name">additions_removals</span></th><td><span class="log-result">20 added, 10 removed, 0 changed</span><small>Rows are matched by key, and the sum reflects rows added or removed.</small></td><td><span class="known">known</span></td></tr>
+            <tr><th scope="row"><span class="log-name">null_flips</span></th><td><span class="log-result">20 changed, with 10 flips in each direction</span><small>NULL to value and value to NULL are counted separately.</small></td><td><span class="known">known</span></td></tr>
+            <tr><th scope="row"><span class="log-name">retyped_column</span></th><td><span class="log-result">amount changes from INTEGER to VARCHAR, with 0 changed rows</span><small>A type change is reported even when the text values match.</small></td><td><span class="known">known</span></td></tr>
+            <tr><th scope="row"><span class="log-name">renamed_column</span></th><td><span class="log-result">memo added, note removed, 0 changed rows</span><small>A rename appears as an added column and a removed column.</small></td><td><span class="known">known</span></td></tr>
+            <tr><th scope="row"><span class="log-name">fanout_join</span></th><td><span class="log-result">10 duplicate keys, with 3 examples in the error</span><small>A join fanout fails the uniqueness check before comparison.</small></td><td><span class="known">known</span></td></tr>
+            <tr><th scope="row"><span class="log-name">currency_unit</span></th><td><span class="log-result">10 changed rows, sum rises from 120,000 to 219,000, mean rises from 120 to 219</span><small>A unit error shifts the sum and mean even when the median and P95 stay fixed.</small></td><td><span class="known">known</span></td></tr>
           </tbody>
         </table>
       </div>
@@ -341,6 +393,14 @@ concurrency:
   </footer>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/gsap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/ScrollTrigger.min.js"></script>
-  <script src="main.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/SplitText.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/ScrambleTextPlugin.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/DrawSVGPlugin.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/Flip.min.js"></script>
+  <script src="https://unpkg.com/lenis@1.3.28/dist/lenis.min.js"></script>
+  <script src="page.js" defer></script>
+  <script src="hero.js" defer></script>
+  <script src="catch.js" defer></script>
+  <script src="backdrop.js" defer></script>
 </body>
 </html>

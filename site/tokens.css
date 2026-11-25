@@ -1,23 +1,26 @@
 :root {
-  --paper: #f7f3ec;
-  --ink: #1c1a17;
-  --ink-2: #4a463f;
-  --ink-3: #7a746a;
-  --rule: #d8d1c4;
-  --rule-strong: #1c1a17;
-  --wash: #efe9de;
-  --accent: #c23b1e;
-  --accent-wash: #f6dfd6;
+  color-scheme: dark light;
 
-  --serif: "Newsreader", Georgia, "Times New Roman", serif;
-  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --stage: #0d0e0b;
+  --panel: #17190f;
+  --ink: #f1eee4;
+  --muted: #8f8c80;
+  --line: #2c2e24;
+  --lime: #c8f031;
+  --coral: #ff4f2e;
+  --pink: #ffb4d6;
+  --on-lime: #0d0e0b;
+
+  --display: "Big Shoulders Display", "Arial Narrow", sans-serif;
+  --sans: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
 
   --step--1: 0.875rem;
   --step-0: 1.0625rem;
-  --step-1: 1.3125rem;
-  --step-2: 1.75rem;
-  --step-3: 2.5rem;
-  --step-4: 3.5rem;
+  --step-1: 1.375rem;
+  --step-2: 2rem;
+  --step-3: clamp(2.5rem, 6vw, 4.5rem);
+  --step-4: clamp(3rem, 12vw, 11rem);
 
   --space-1: 0.25rem;
   --space-2: 0.5rem;
@@ -25,23 +28,37 @@
   --space-4: 1.5rem;
   --space-5: 2.5rem;
   --space-6: 4rem;
-  --space-7: 7rem;
+  --space-7: 8rem;
 
-  --measure: 66ch;
-  --wide: 70rem;
-  --radius: 2px;
+  --measure: 64ch;
+  --wide: 80rem;
+  --radius: 0;
+  --border: 1px solid var(--line);
 }
 
-@media (prefers-color-scheme: dark) {
+@media (prefers-color-scheme: light) {
   :root {
-    --paper: #171512;
-    --ink: #ece6da;
-    --ink-2: #bdb5a6;
-    --ink-3: #8c8476;
-    --rule: #39342c;
-    --rule-strong: #ece6da;
-    --wash: #211e1a;
-    --accent: #ef6a4a;
-    --accent-wash: #3a1f17;
+    --stage: #f1eee4;
+    --panel: #e7e3d6;
+    --ink: #0d0e0b;
+    --muted: #5c5a52;
+    --line: #c9c4b4;
+    --lime: #5f7a00;
+    --coral: #d23a1c;
+    --pink: #b8487c;
+    --on-lime: #f1eee4;
   }
 }
+
+:root {
+  --gutter: clamp(var(--space-3), 4vw, var(--space-6));
+  --mast-height: 4.5rem;
+  --score-size: clamp(5rem, 17vw, 15rem);
+  --score-phone: clamp(4.5rem, 24vw, 11rem);
+  --micro: 0.75rem;
+  --stage-space: clamp(var(--space-5), 6vw, var(--space-7));
+  --section-space: clamp(var(--space-6), 8vw, var(--space-7));
+  --cell: clamp(var(--space-2), 1.4vw, var(--space-3));
+}
+
+* { font-variant-ligatures: none; }
