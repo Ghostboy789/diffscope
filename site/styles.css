@@ -1,0 +1,491 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: var(--step-1)/1.47 var(--serif);
+  font-variant-numeric: tabular-nums;
+}
+
+a {
+  color: inherit;
+  text-decoration-thickness: 1px;
+  text-underline-offset: var(--space-1);
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: var(--space-1);
+}
+
+.skip-link {
+  position: absolute;
+  z-index: 5;
+  top: var(--space-2);
+  left: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  transform: translateY(-160%);
+  background: var(--paper);
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+.page-width {
+  width: calc(100% - var(--space-5) * 2);
+  max-width: var(--wide);
+  margin-inline: auto;
+}
+
+.masthead,
+.page-footer {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.masthead {
+  padding-block: var(--space-4) var(--space-3);
+  border-bottom: 2px solid var(--rule-strong);
+}
+
+.wordmark {
+  font-size: var(--step-3);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.055em;
+  text-decoration: none;
+}
+
+.masthead nav,
+.page-footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  font-size: var(--step-0);
+}
+
+.masthead nav a {
+  text-decoration: none;
+}
+
+.masthead nav a:hover {
+  text-decoration: underline;
+}
+
+.masthead nav a:last-child {
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--rule);
+}
+
+.opening {
+  padding-block: var(--space-5) var(--space-6);
+}
+
+.opening-meta,
+.opening-source {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+}
+
+.opening-meta {
+  justify-content: space-between;
+}
+
+.opening p,
+.section-intro h2,
+.evidence,
+.page-footer p {
+  margin: 0;
+}
+
+.label,
+.model-path,
+.number,
+code,
+pre,
+.data-table,
+.model-name {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.label,
+.model-path,
+.source,
+.figure-note,
+.archive-note {
+  color: var(--ink-2);
+}
+
+.label,
+.model-path {
+  font-size: var(--step--1);
+}
+
+.label {
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.opening h1 {
+  max-width: 24ch;
+  margin-block: var(--space-5) var(--space-5);
+  font-size: clamp(var(--step-3), 5.35vw, calc(var(--step-4) + var(--step-2)));
+  font-weight: 400;
+  line-height: 1.03;
+  letter-spacing: -0.042em;
+  text-wrap: balance;
+}
+
+.opening h1 .number {
+  font-size: 0.86em;
+  letter-spacing: -0.075em;
+}
+
+.opening h1 a {
+  white-space: nowrap;
+  text-decoration-color: var(--ink-3);
+  text-underline-offset: 0.09em;
+}
+
+.bug,
+.correction {
+  color: var(--accent);
+}
+
+.correction {
+  position: relative;
+  white-space: nowrap;
+}
+
+.correction::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0.025em;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-1.2deg);
+}
+
+.byline {
+  font-size: var(--step-0);
+  font-weight: 500;
+}
+
+.opening-source .source {
+  border-left: 1px solid var(--rule);
+  padding-left: var(--space-3);
+}
+
+.source,
+.figure-note,
+.archive-note {
+  font-size: var(--step-0);
+}
+
+.article-section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);
+  gap: var(--space-6);
+  padding-block: var(--space-5) var(--space-6);
+  border-top: 1px solid var(--rule-strong);
+  scroll-margin-top: var(--space-4);
+}
+
+.section-intro h2 {
+  font-size: var(--step-3);
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: -0.045em;
+}
+
+.section-intro p {
+  margin: var(--space-3) 0 0;
+  color: var(--ink-2);
+  font-size: var(--step-0);
+}
+
+.section-intro .source {
+  display: inline-block;
+  margin-top: var(--space-3);
+}
+
+.model-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-5);
+  margin-top: var(--space-4);
+}
+
+.model-pair > section {
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-row: span 5;
+  align-items: start;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.model-name {
+  padding-bottom: var(--space-2);
+  margin: 0;
+  border-bottom: 2px solid var(--rule-strong);
+  font-size: var(--step-2);
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: -0.045em;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--step--1);
+  line-height: 1.5;
+  text-align: left;
+}
+
+.data-table caption {
+  padding-block: var(--space-2);
+  color: var(--ink);
+  font: 500 var(--step-1)/1.25 var(--serif);
+  text-align: left;
+}
+
+.data-table caption code,
+.examples small {
+  display: block;
+  color: var(--ink-2);
+  font-size: var(--step--1);
+  font-weight: 400;
+}
+
+.data-table th,
+.data-table td {
+  padding: var(--space-2) var(--space-1);
+  border-bottom: 1px solid var(--rule);
+  font-weight: 400;
+  vertical-align: baseline;
+  text-align: right;
+}
+
+.data-table th:first-child {
+  padding-left: 0;
+  text-align: left;
+}
+
+.data-table :is(th, td):last-child {
+  padding-right: 0;
+}
+
+.data-table thead th {
+  border-bottom-color: var(--ink-3);
+  color: var(--ink-2);
+  font-weight: 500;
+  vertical-align: bottom;
+}
+
+.examples small {
+  overflow-wrap: anywhere;
+}
+
+.figure-note {
+  max-width: var(--measure);
+  margin: var(--space-4) 0 0;
+  font-style: italic;
+}
+
+.figure-note :is(code, .number),
+.archive-note .number {
+  font-style: normal;
+}
+
+.prose,
+.instructions p {
+  max-width: var(--measure);
+}
+
+.prose p,
+.instructions p {
+  margin: 0 0 var(--space-3);
+}
+
+.prose p:last-child,
+.instructions p:last-child {
+  margin-bottom: 0;
+}
+
+p code,
+p .number {
+  font-size: 0.84em;
+}
+
+.timings caption {
+  padding-top: 0;
+}
+
+.timings tbody {
+  font-size: var(--step-0);
+}
+
+.scenarios tbody th {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.scenarios :is(th, td):last-child {
+  padding-left: var(--space-4);
+  text-align: left;
+}
+
+.scenarios tbody :is(th, td) {
+  padding-block: var(--space-3);
+}
+
+.instructions h3 {
+  margin: var(--space-5) 0 var(--space-3);
+  font-size: var(--step-2);
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+}
+
+.instructions h3:first-child {
+  margin-top: 0;
+}
+
+.instructions pre {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-left: 2px solid var(--ink-3);
+  background: var(--wash);
+  font-size: var(--step--1);
+  line-height: 1.65;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+p code {
+  white-space: nowrap;
+}
+
+.limits-list {
+  margin: 0;
+  padding-inline-start: var(--space-4);
+}
+
+.limits-list li + li {
+  margin-top: var(--space-2);
+}
+
+.prose .archive-note {
+  padding-top: var(--space-4);
+  margin-top: var(--space-4);
+  border-top: 1px solid var(--rule);
+}
+
+.page-footer {
+  padding-block: var(--space-4) var(--space-5);
+  border-top: 2px solid var(--rule-strong);
+}
+
+@media (max-width: 64rem) {
+  .article-section {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+  }
+
+  .section-intro {
+    max-width: var(--measure);
+  }
+}
+
+@media (max-width: 44rem) {
+  .page-width {
+    width: calc(100% - var(--space-4) * 2);
+  }
+
+  .masthead,
+  .page-footer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .masthead nav,
+  .page-footer nav {
+    gap: var(--space-2) var(--space-3);
+  }
+
+  .masthead nav a:last-child {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .opening,
+  .article-section {
+    padding-block: var(--space-4) var(--space-5);
+  }
+
+  .opening h1 {
+    margin-block: var(--space-4);
+    font-size: calc(var(--step-3) + var(--step--1));
+  }
+
+  .opening-source {
+    display: grid;
+    gap: var(--space-1);
+  }
+
+  .opening-source .source {
+    padding-left: 0;
+    border: 0;
+  }
+
+  .model-pair {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: var(--space-5);
+  }
+
+  .model-pair > section {
+    grid-template-rows: auto;
+    grid-row: auto;
+  }
+
+  .scenarios tbody th {
+    width: 37%;
+  }
+
+  .scenarios :is(th, td):last-child {
+    padding-left: var(--space-2);
+  }
+
+  .instructions pre {
+    padding-inline: var(--space-3);
+  }
+}
+
+.scenarios td small {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--ink-2);
+  font-size: inherit;
+}

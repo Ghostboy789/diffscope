@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
+  <style>
+    :root { --paper: #f7f3ec; --ink: #1c1a17; }
+    @media (prefers-color-scheme: dark) {
+      :root { --paper: #171512; --ink: #ece6da; }
+    }
+    rect { fill: var(--paper); }
+    path { fill: var(--ink); }
+  </style>
+  <rect width="40" height="40"/>
+  <path fill-rule="evenodd" d="M26 5h6v29h-6v-3c-2 2-4 3-7 3-7 0-12-5-12-12s5-12 12-12c3 0 5 1 7 3V5zm-6 11c-4 0-7 2-7 6s3 7 7 7 7-3 7-7-3-6-7-6z"/>
+</svg>

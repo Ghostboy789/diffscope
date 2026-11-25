@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>diffscope · A currency bug in a dbt pull request</title>
+  <meta name="description" content="See how diffscope caught order 103 jumping from 760 to 76,000 cents in a dbt pull request. Read the DuckDB comparison, benchmark and limits.">
+  <meta name="author" content="Medhansh Shekhawat">
+  <meta property="og:title" content="diffscope · A currency bug in a dbt pull request">
+  <meta property="og:description" content="The PR comment traced a change from 760 to 76,000 cents on one order into the customer's total. See the data and how to run the comparison.">
+  <meta property="og:type" content="website">
+  <link rel="stylesheet" href="tokens.css">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="pinned.css">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&amp;display=swap">
+</head>
+<body id="top">
+  <a class="skip-link" href="#finding">Skip to the finding</a>
+  <header class="masthead page-width">
+    <a class="wordmark" href="#top">diffscope</a>
+    <nav aria-label="Page navigation">
+      <a href="#method">How it works</a>
+      <a href="#benchmark">Benchmark</a>
+      <a href="#quick-start">Quick start</a>
+      <a href="https://github.com/Ghostboy789/diffscope">GitHub</a>
+    </nav>
+  </header>
+  <main>
+    <section class="opening page-width" id="finding" aria-labelledby="headline">
+      <div class="opening-meta">
+        <p class="label">dbt pull request review</p>
+        <p class="model-path"><span>jaffle_demo</span> / orders</p>
+      </div>
+      <h1 id="headline">diffscope caught order <span class="number">103</span> jumping from <span class="number">760</span> to <span class="number correction">76,000</span> cents on <a href="https://github.com/Ghostboy789/diffscope/pull/1">PR <span class="number">#1</span></a>.</h1>
+      <div class="opening-source">
+        <p class="byline">Medhansh Shekhawat</p>
+        <p class="source">Exact values from the synthetic Jaffle Shop demo.</p>
+      </div>
+    </section>
+<section id="catch" class="catch-section" aria-labelledby="catch-heading">
+  <div class="catch-stage">
+    <header class="catch-header">
+      <h2 id="catch-heading">Reading the PR comment</h2>
+      <span class="catch-position" aria-hidden="true"></span>
+    </header>
+
+    <div class="catch-steps">
+      <div class="catch-step">
+        <div class="catch-note">
+          <h3>The row counts hold</h3>
+          <p>Both models kept the same keys. The comment still found changes within matching rows.</p>
+        </div>
+        <div class="catch-evidence">
+          <table class="catch-table">
+            <caption>Rows by model</caption>
+            <thead><tr><th scope="col">Model</th><th scope="col">Before</th><th scope="col">After</th><th scope="col">Changed</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">orders</th><td>8</td><td>8</td><td>2</td></tr>
+              <tr><th scope="row">customers</th><td>4</td><td>4</td><td>1</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="catch-step">
+        <div class="catch-note">
+          <h3>The intended rename</h3>
+          <p>On order <code>101</code>, the change to <code>status</code> adds a single letter.</p>
+        </div>
+        <figure class="catch-evidence">
+          <figcaption>Order <code>101</code> · <code>status</code></figcaption>
+          <dl class="catch-values">
+            <div><dt>Before</dt><dd>complete</dd></div>
+            <div><dt>After</dt><dd>complete<ins>d</ins></dd></div>
+          </dl>
+        </figure>
+      </div>
+
+      <div class="catch-step">
+        <div class="catch-note">
+          <h3>The currency bug</h3>
+          <p>Order <code>103</code> was already in cents. Its amount grew by a factor of <code class="catch-effect">100</code>.</p>
+        </div>
+        <figure class="catch-evidence">
+          <figcaption>Order <code>103</code> · <code>amount_cents</code></figcaption>
+          <dl class="catch-values">
+            <div><dt>Before</dt><dd>760
+              <svg class="catch-bar" viewBox="0 0 80000 12" preserveAspectRatio="none" aria-hidden="true"><rect width="760" height="12"/></svg>
+            </dd></div>
+            <div><dt>After</dt><dd class="catch-effect">76,000
+              <svg class="catch-bar" viewBox="0 0 80000 12" preserveAspectRatio="none" aria-hidden="true"><rect width="76000" height="12"/></svg>
+            </dd></div>
+          </dl>
+        </figure>
+      </div>
+
+      <div class="catch-step">
+        <div class="catch-note">
+          <h3>The customer total follows</h3>
+          <p>Order <code>103</code> belongs to customer <code>2</code>. The higher order amount carries into the <code>customers</code> model.</p>
+        </div>
+        <figure class="catch-evidence">
+          <figcaption>Customer <code>2</code> · <code>total_amount_cents</code></figcaption>
+          <dl class="catch-values">
+            <div><dt>Before</dt><dd>1,250
+              <svg class="catch-bar" viewBox="0 0 80000 12" preserveAspectRatio="none" aria-hidden="true"><rect width="1250" height="12"/></svg>
+            </dd></div>
+            <div><dt>After</dt><dd class="catch-effect">76,490
+              <svg class="catch-bar" viewBox="0 0 80000 12" preserveAspectRatio="none" aria-hidden="true"><rect width="76490" height="12"/></svg>
+            </dd></div>
+          </dl>
+        </figure>
+      </div>
+
+      <div class="catch-step">
+        <div class="catch-note">
+          <h3>Across all orders</h3>
+          <p>The sum of <code>amount_cents</code> rose <code class="catch-effect">1,361.8%</code>. A single order moved both the mean and the upper end of the distribution.</p>
+        </div>
+        <div class="catch-evidence">
+          <table class="catch-table">
+            <caption>All orders · <code>amount_cents</code></caption>
+            <thead><tr><th scope="col">Statistic</th><th scope="col">Before</th><th scope="col">After</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Sum</th><td>5,525.0</td><td class="catch-effect">80,765.0</td></tr>
+              <tr><th scope="row">Mean</th><td>690.62</td><td class="catch-effect">10,095.62</td></tr>
+              <tr><th scope="row">P95</th><td>1,045.0</td><td class="catch-effect">49,802.5</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <footer class="catch-source">
+    <p>Exact values from the synthetic Jaffle Shop demo.</p>
+    <a href="https://github.com/Ghostboy789/diffscope/pull/1">Read the comment on PR <code>#1</code></a>
+  </footer>
+</section>
+    <section class="article-section page-width" id="comment" aria-labelledby="comment-title">
+      <header class="section-intro">
+        <h2 id="comment-title">The PR comment</h2>
+        <p>Both models kept the same row count. The comment shows which values changed.</p>
+        <a class="source" href="https://github.com/Ghostboy789/diffscope/pull/1">Read the full comment on GitHub</a>
+      </header>
+      <figure class="evidence">
+        <figcaption class="label">Jaffle Shop · comment excerpt</figcaption>
+        <div class="model-pair">
+          <section aria-labelledby="orders-title">
+            <h3 class="model-name" id="orders-title">orders</h3>
+            <table class="data-table">
+              <caption>Rows</caption>
+              <thead><tr><th scope="col">Comparison</th><th scope="col">Count</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">Before</th><td>8</td></tr>
+                <tr><th scope="row">After</th><td>8</td></tr>
+                <tr><th scope="row">Added</th><td>0</td></tr>
+                <tr><th scope="row">Removed</th><td>0</td></tr>
+                <tr><th scope="row">Changed</th><td>2</td></tr>
+                <tr><th scope="row">Unchanged</th><td>6</td></tr>
+              </tbody>
+            </table>
+            <table class="data-table">
+              <caption>Most changed columns</caption>
+              <thead><tr><th scope="col">Column</th><th scope="col">Changed rows</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">status</th><td>1</td></tr>
+                <tr><th scope="row">amount_cents</th><td>1</td></tr>
+              </tbody>
+            </table>
+            <table class="data-table">
+              <caption>Numeric shifts <code>amount_cents</code></caption>
+              <thead><tr><th scope="col">Statistic</th><th scope="col">Before</th><th scope="col">After</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">Mean</th><td>690.62</td><td class="bug">10,095.62</td></tr>
+                <tr><th scope="row">P95</th><td>1,045.0</td><td class="bug">49,802.5</td></tr>
+                <tr><th scope="row">Sum</th><td>5,525.0</td><td class="bug">80,765.0</td></tr>
+              </tbody>
+            </table>
+            <table class="data-table examples">
+              <caption>Example rows</caption>
+              <thead><tr><th scope="col">order_id / column</th><th scope="col">Before</th><th scope="col">After</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">101 <small>status</small></th><td>complete</td><td>completed</td></tr>
+                <tr><th scope="row">103 <small>amount_cents</small></th><td>760</td><td class="bug">76,000</td></tr>
+              </tbody>
+            </table>
+          </section>
+          <section aria-labelledby="customers-title">
+            <h3 class="model-name" id="customers-title">customers</h3>
+            <table class="data-table">
+              <caption>Rows</caption>
+              <thead><tr><th scope="col">Comparison</th><th scope="col">Count</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">Before</th><td>4</td></tr>
+                <tr><th scope="row">After</th><td>4</td></tr>
+                <tr><th scope="row">Added</th><td>0</td></tr>
+                <tr><th scope="row">Removed</th><td>0</td></tr>
+                <tr><th scope="row">Changed</th><td>1</td></tr>
+                <tr><th scope="row">Unchanged</th><td>3</td></tr>
+              </tbody>
+            </table>
+            <table class="data-table">
+              <caption>Most changed columns</caption>
+              <thead><tr><th scope="col">Column</th><th scope="col">Changed rows</th></tr></thead>
+              <tbody><tr><th scope="row">total_amount_cents</th><td>1</td></tr></tbody>
+            </table>
+            <table class="data-table">
+              <caption>Numeric shifts <code>total_amount_cents</code></caption>
+              <thead><tr><th scope="col">Statistic</th><th scope="col">Before</th><th scope="col">After</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">Mean</th><td>1,381.25</td><td class="bug">20,191.25</td></tr>
+                <tr><th scope="row">Median</th><td>1,637.5</td><td class="bug">2,137.5</td></tr>
+                <tr><th scope="row">P95</th><td>2,216.25</td><td class="bug">65,354.0</td></tr>
+                <tr><th scope="row">Sum</th><td>5,525.0</td><td class="bug">80,765.0</td></tr>
+              </tbody>
+            </table>
+            <table class="data-table examples">
+              <caption>Example rows</caption>
+              <thead><tr><th scope="col">customer_id / column</th><th scope="col">Before</th><th scope="col">After</th></tr></thead>
+              <tbody><tr><th scope="row">2 <small>total_amount_cents</small></th><td>1,250</td><td class="bug">76,490</td></tr></tbody>
+            </table>
+          </section>
+        </div>
+        <p class="figure-note">Order <span class="number">101</span> shows the intended status rename. The currency error on order <span class="number">103</span> raised customer <span class="number">2</span>’s total. Across orders, the sum of <code>amount_cents</code> rose <span class="number bug">1,361.8%</span>.</p>
+      </figure>
+    </section>
+
+    <section class="article-section page-width" id="method" aria-labelledby="method-title">
+      <header class="section-intro"><h2 id="method-title">How it works</h2></header>
+      <div class="prose">
+        <p>DuckDB checks that the key identifies each row uniquely in both versions. A full outer join on the key finds rows that appear on just one side and marks them as added or removed.</p>
+        <p>For matching keys, two <code>NULL</code>s count as equal. A <code>NULL</code> paired with a value counts as a change. For numeric columns of the same type, <code>diffscope tables --tolerance</code> treats absolute differences up to the threshold as equal. The default is <span class="number">0</span>.</p>
+        <p>The diff lists added, removed and retyped columns. It compares retyped columns as text. Numeric summaries cover each full table, including rows that were added or removed.</p>
+        <p>DuckDB SQL handles the checks, join, counts and summaries. Python runs the queries and formats the result for the pull request.</p>
+      </div>
+    </section>
+
+    <section class="article-section page-width" id="benchmark" aria-labelledby="benchmark-title">
+      <header class="section-intro">
+        <h2 id="benchmark-title">Benchmark</h2>
+        <a class="source" href="https://github.com/Ghostboy789/diffscope/blob/main/bench/results.md">Benchmark results</a>
+      </header>
+      <figure class="evidence">
+        <table class="data-table timings">
+          <caption>Time to compare two tables</caption>
+          <thead><tr><th scope="col">Rows per side</th><th scope="col">Changed rows</th><th scope="col">Wall time (s)</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">100,000</th><td>1,000</td><td>0.023</td></tr>
+            <tr><th scope="row">1,000,000</th><td>10,000</td><td>0.084</td></tr>
+            <tr><th scope="row">10,000,000</th><td>100,000</td><td>0.655</td></tr>
+          </tbody>
+        </table>
+        <figcaption class="figure-note">DuckDB <span class="number">2.0.1</span> on <code>Darwin arm64</code> with a <span class="number">4 GB</span> memory limit. Each time is a single wall-clock observation and excludes table creation. A confidence interval requires repeated runs.</figcaption>
+      </figure>
+    </section>
+
+    <section class="article-section page-width" id="scenarios" aria-labelledby="scenarios-title">
+      <header class="section-intro">
+        <h2 id="scenarios-title">Tests with known answers</h2>
+        <p>Each scenario starts with <span class="number">1,000</span> synthetic rows. The expected counts and aggregates are exact properties of those tables.</p>
+        <a class="source" href="https://github.com/Ghostboy789/diffscope/blob/main/bench/README.md">Fixtures and verification plan</a>
+      </header>
+      <div class="evidence">
+        <table class="data-table scenarios" aria-labelledby="scenarios-title">
+          <thead><tr><th scope="col">Scenario</th><th scope="col">Expected result</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">identical</th><td>1,000 unchanged rows<small>Equal values, including two NULLs, stay unchanged.</small></td></tr>
+            <tr><th scope="row">value_changes</th><td>10 changed rows, all in amount<small>Changes are counted at the row and column level.</small></td></tr>
+            <tr><th scope="row">additions_removals</th><td>20 added, 10 removed, 0 changed<small>Rows are matched by key, and the sum reflects rows added or removed.</small></td></tr>
+            <tr><th scope="row">null_flips</th><td>20 changed, with 10 flips in each direction<small>NULL to value and value to NULL are counted separately.</small></td></tr>
+            <tr><th scope="row">retyped_column</th><td>amount changes from INTEGER to VARCHAR, with 0 changed rows<small>A type change is reported even when the text values match.</small></td></tr>
+            <tr><th scope="row">renamed_column</th><td>memo added, note removed, 0 changed rows<small>A rename appears as an added column and a removed column.</small></td></tr>
+            <tr><th scope="row">fanout_join</th><td>10 duplicate keys, with 3 examples in the error<small>A join fanout fails the uniqueness check before comparison.</small></td></tr>
+            <tr><th scope="row">currency_unit</th><td>10 changed rows, sum rises from 120,000 to 219,000, mean rises from 120 to 219<small>A unit error shifts the sum and mean even when the median and P95 stay fixed.</small></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="article-section page-width" id="quick-start" aria-labelledby="quick-title">
+      <header class="section-intro">
+        <h2 id="quick-title">Quick start</h2>
+        <p>Run these commands from the repository root with Python <span class="number">3.10</span> or newer.</p>
+        <a class="source" href="https://github.com/Ghostboy789/diffscope#quick-start">Repository instructions</a>
+      </header>
+      <div class="instructions">
+        <h3>Install diffscope</h3>
+        <pre><code>python -m pip install .</code></pre>
+        <h3>Compare tables or files</h3>
+        <pre><code>diffscope tables baseline.orders candidate.orders --db shop.duckdb --key order_id
+diffscope tables before.csv after.parquet --key order_id</code></pre>
+        <p>Repeat <code>--key</code> for a composite key. Use <code>--format json</code> for machine-readable output.</p>
+        <h3>Compare built dbt models</h3>
+        <pre><code>python -m pip install 'dbt-duckdb&gt;=1.11,&lt;1.12' 'dbt-core&gt;=1.11,&lt;1.12'
+bash examples/jaffle_demo/build.sh
+diffscope dbt --project-dir examples/jaffle_demo --models orders customers \
+  --base-schema baseline --target-schema candidate</code></pre>
+        <p>The command reads <code>meta.diffscope_keys</code> from the manifest. Override it with <code>--key</code>, or choose the DuckDB file with <code>--db</code>.</p>
+        <h3>Post the comparison on a pull request</h3>
+        <p>Grant comment permission in the <code>pull_request</code> workflow and group runs by pull request.</p>
+        <pre><code>permissions:
+  contents: read
+  pull-requests: write
+concurrency:
+  group: diffscope-${{ github.event.pull_request.number }}
+  cancel-in-progress: true</code></pre>
+        <p>After checkout, Python setup and the build of both schemas, add the comparison step.</p>
+        <pre><code>- uses: Ghostboy789/diffscope@main
+  with:
+    project-dir: examples/jaffle_demo
+    models: orders customers
+    base-schema: baseline
+    target-schema: candidate</code></pre>
+        <p>The action uses <code>gh</code> to create or update one comment. The demo skips this step on fork pull requests, where the token is read-only. <a href="https://github.com/Ghostboy789/diffscope/blob/main/.github/workflows/demo.yml">Demo workflow</a></p>
+      </div>
+    </section>
+
+    <section class="article-section page-width" id="limits" aria-labelledby="limits-title">
+      <header class="section-intro"><h2 id="limits-title">Limits</h2></header>
+      <div class="prose">
+        <ul class="limits-list">
+          <li>The dbt integration supports the DuckDB adapter only.</li>
+          <li>The key or combination of keys must be unique in each version.</li>
+          <li>Both versions of each dbt model must be built before comparison.</li>
+          <li>Cross-database diffs are outside the current scope.</li>
+        </ul>
+        <p class="archive-note">Datafold archived its open-source table comparison tool in May <span class="number">2024</span>. <a href="https://github.com/datafold/data-diff">datafold/data-diff archive</a></p>
+      </div>
+    </section>
+  </main>
+  <footer class="page-footer page-width">
+    <p>Medhansh Shekhawat</p>
+    <nav aria-label="Author and repository">
+      <a href="https://github.com/Ghostboy789">GitHub</a>
+      <a href="https://www.linkedin.com/in/medhansh-shekhawat">LinkedIn</a>
+      <a href="https://github.com/Ghostboy789/diffscope">Repository</a>
+    </nav>
+  </footer>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/ScrollTrigger.min.js"></script>
+  <script src="main.js" defer></script>
+</body>
+</html>
