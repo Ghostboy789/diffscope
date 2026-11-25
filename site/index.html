@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script>
     try {
-      if (localStorage.getItem("diffscope-theme") === "light") document.documentElement.dataset.theme = "light";
+      const preference = localStorage.getItem("diffscope-theme");
+      if (preference === "light" || preference === "dark") document.documentElement.dataset.theme = preference;
     } catch {}
   </script>
   <title>diffscope · A currency bug in a dbt pull request</title>
@@ -18,11 +19,19 @@
   <link rel="stylesheet" href="tokens.css">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="pinned.css">
-  <link rel="stylesheet" href="backdrop.css">
+  <link rel="stylesheet" href="scope.css">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800;900&amp;family=Instrument+Sans:wght@400;500&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..800&amp;family=IBM+Plex+Mono:wght@400;600&amp;display=swap" onload="this.rel='stylesheet'">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.min.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
 </head>
 <body id="top">
   <a class="skip-link" href="#finding">Skip to the finding</a>
@@ -36,7 +45,7 @@
         <a href="#method">How it works</a>
         <a href="#benchmark">Benchmark</a>
         <a href="#quick-start">Quick start</a>
-        <button class="theme-toggle" type="button" aria-label="Light theme" aria-pressed="false" title="Toggle light theme" hidden>
+        <button class="theme-toggle" type="button" aria-label="Dark theme" aria-pressed="false" title="Toggle dark theme" hidden>
           <span class="cord-track" aria-hidden="true"><span class="cord"><i></i></span></span>
         </button>
       </nav>
@@ -44,77 +53,125 @@
   </header>
   <main>
     <section class="opening" id="finding" aria-labelledby="headline">
-      <svg class="data-field" width="100%" height="100%" aria-hidden="true" focusable="false">
-        <defs>
-          <text id="order-hit" x="0" y="66" xml:space="preserve">103       completed          760</text>
-          <g id="order-rows" xml:space="preserve" fill="white">
-            <text y="12">order_id  status    amount_cents</text>
-            <text y="30">101       complete           850</text>
-            <text y="48">102       placed             625</text>
-            <use href="#order-hit"/>
-            <text y="84">104       completed          490</text>
-            <text y="102">105       completed         1150</text>
-            <text y="120">106       returned           400</text>
-            <text y="138">107       completed          550</text>
-            <text y="156">108       placed             700</text>
-          </g>
-          <pattern id="order-field" width="852" height="372" patternUnits="userSpaceOnUse">
-            <use href="#order-rows"/>
-            <use href="#order-rows" y="190" opacity=".65"/>
-            <use href="#order-rows" x="282" y="78" opacity=".68"/>
-            <use href="#order-rows" x="576" y="-46" opacity=".82"/>
-            <use href="#order-rows" x="576" y="132"/>
-            <use href="#order-rows" x="576" y="326" opacity=".82"/>
-          </pattern>
-          <pattern id="hot-row" width="852" height="372" patternUnits="userSpaceOnUse"><use href="#order-hit" fill="white"/></pattern>
-          <pattern id="impact-dots" width="5" height="5" patternUnits="userSpaceOnUse"><rect width="2.5" height="2.5" fill="white"/></pattern>
-          <mask id="dither"><rect width="100%" height="100%" fill="url(#impact-dots)"/></mask>
-          <mask id="ascii"><rect width="100%" height="100%" fill="url(#order-field)"/></mask>
-          <mask id="changed-row"><rect width="100%" height="100%" fill="url(#hot-row)"/></mask>
-          <linearGradient id="field-density" x2="100%" y2="0" gradientUnits="objectBoundingBox">
-            <stop stop-color="var(--lime)" stop-opacity=".035"/><stop offset=".62" stop-color="var(--lime)" stop-opacity=".085"/>
-            <stop offset="1" stop-color="var(--lime)" stop-opacity=".40"/>
-          </linearGradient>
-          <radialGradient id="develop"><stop stop-color="var(--lime)" stop-opacity=".65"/><stop offset="1" stop-color="var(--lime)" stop-opacity="0"/></radialGradient>
-          <radialGradient id="thermal" gradientUnits="userSpaceOnUse" cx="76%" cy="39%" r="205">
-            <stop stop-color="var(--pink)"/><stop offset=".38" stop-color="var(--pink)"/>
-            <stop offset=".72" stop-color="var(--coral)"/><stop offset="1" stop-color="var(--coral)" stop-opacity="0"/>
-          </radialGradient>
-        </defs>
-        <g mask="url(#ascii)">
-          <rect width="100%" height="100%" fill="url(#field-density)"/>
-          <circle class="develop" cx="0" cy="0" r="120" fill="url(#develop)" visibility="hidden"/>
-        </g>
-        <g class="thermal-cells" fill="url(#thermal)">
-          <rect width="100%" height="100%" opacity=".19"/>
-          <rect width="100%" height="100%" mask="url(#dither)" opacity=".92"/>
-          <rect width="100%" height="100%" mask="url(#changed-row)"/>
-        </g>
-      </svg>
-      <div class="page-width scoreboard">
-        <p class="address"><a href="https://github.com/Ghostboy789/diffscope/pull/1">PR #1</a> · jaffle_demo/orders · order 103 · amount_cents</p>
-        <div class="hero-main">
-          <p class="baseline">Before <strong>760 cents</strong> <span aria-hidden="true">→</span> After</p>
-          <div class="score">
-            <span class="sr-only">After, in cents</span>
-            <span class="odometer" data-final="76,000">76,000</span>
-            <span class="stamp">×100<i class="stamp-flash" aria-hidden="true"></i></span>
-          </div>
-        </div>
-        <div class="hero-foot">
-          <div>
-            <h1 id="headline">One order. One wrong unit.</h1>
-            <p class="hero-subline">diffscope caught it before merge.</p>
-            <div class="hero-actions">
-              <a class="action primary" href="#catch-start">See the catch ↓</a>
-              <a class="action secondary" href="https://github.com/Ghostboy789/diffscope">GitHub <span aria-hidden="true">↗</span></a>
+      <div class="page-width hero-layout">
+        <div class="hero-copy">
+          <p class="address"><a href="https://github.com/Ghostboy789/diffscope/pull/1">PR #1</a> · jaffle_demo/orders · order 103 · amount_cents</p>
+          <h1 id="headline" data-proximity><span>One order.</span> <span>One wrong unit.</span></h1>
+          <p class="hero-subline">diffscope caught it before merge.</p>
+          <div class="hero-main">
+            <p class="baseline">Before <strong>760 cents</strong> <span aria-hidden="true">→</span> After</p>
+            <div class="score">
+              <span class="sr-only">After, in cents</span>
+              <span class="hero-value">76,000</span>
+              <span class="stamp">×100</span>
             </div>
           </div>
-          <div class="hero-caption">
-            <p class="field-key"><span>8 orders</span><span>Order 103</span></p>
-            <p class="demo-source">Exact values from the synthetic Jaffle Shop demo.</p>
+          <div class="hero-actions">
+            <a class="action primary" href="#catch-start">See the catch ↓</a>
+            <a class="action secondary" href="https://github.com/Ghostboy789/diffscope">GitHub <span aria-hidden="true">↗</span></a>
           </div>
         </div>
+        <figure class="scope" aria-labelledby="scope-title">
+          <div class="scope-head">
+            <span id="scope-title">amount_cents</span><span>8 orders</span>
+            <button class="scope-playback" type="button">Pause scene</button>
+          </div>
+          <div class="scope-window" aria-hidden="true">
+            <svg class="scope-drawing" viewBox="8 -132 674 770">
+              <defs>
+                <linearGradient id="wall-light" x1="0" x2="0" y1="1" y2="0">
+                  <stop class="scope-wall-base"/><stop class="scope-wall-top" offset="1"/>
+                </linearGradient>
+                <linearGradient id="floor-light" x1="0" x2=".35" y1="0" y2="1">
+                  <stop class="scope-floor-base"/><stop class="scope-floor-edge" offset="1"/>
+                </linearGradient>
+              </defs>
+              <polygon class="scope-wall" points="289.5,275.9 618.0,465.6 618.0,65.5 289.5,-124.2"/>
+              <polygon class="scope-floor" points="289.5,275.9 618.0,465.6 395.2,625.4 39.8,420.1"/>
+              <polyline class="scope-rule" points="288.2,276.7 616.6,466.4"/>
+              <text class="scope-tick" x="277.2" y="276.7">0</text>
+              <polyline class="scope-rule" points="288.2,89.6 616.6,279.3"/>
+              <text class="scope-tick" x="277.2" y="89.6">40,000</text>
+              <polyline class="scope-rule" points="288.2,-97.4 616.6,92.2"/>
+              <text class="scope-tick" x="277.2" y="-97.4">80,000</text>
+              <g class="scope-slab" data-order-drawing="101" data-cents="850">
+                <polygon class="scope-shadow" points="276.4,319.8 330.4,351.0 280.5,380.9 224.7,348.7"/>
+                <polygon class="scope-slab-front" points="240.4,346.9 279.2,369.2 279.2,365.2 240.4,342.9"/>
+                <polygon class="scope-slab-side" points="279.2,369.2 320.6,345.3 320.6,341.3 279.2,365.2"/>
+                <polygon class="scope-slab-top" points="240.4,342.9 279.2,365.2 320.6,341.3 281.9,319.0"/>
+              </g>
+              <g class="scope-slab" data-order-drawing="102" data-cents="625">
+                <polygon class="scope-shadow" points="352.9,364.0 406.9,395.2 357.0,425.1 301.2,392.8"/>
+                <polygon class="scope-slab-front" points="316.9,391.0 355.6,413.4 355.6,410.4 316.9,388.1"/>
+                <polygon class="scope-slab-side" points="355.6,413.4 397.1,389.5 397.1,386.5 355.6,410.4"/>
+                <polygon class="scope-slab-top" points="316.9,388.1 355.6,410.4 397.1,386.5 358.4,364.2"/>
+              </g>
+              <g class="scope-slab bug" data-order-drawing="103" data-cents="76000">
+                <polygon class="scope-shadow" points="429.4,408.2 483.5,439.3 433.5,469.2 377.7,437.0"/>
+                <polygon class="scope-slab-front" points="393.4,435.2 432.1,457.5 432.1,102.1 393.4,79.8"/>
+                <polygon class="scope-slab-side" points="432.1,457.5 473.6,433.6 473.6,78.2 432.1,102.1"/>
+                <polygon class="scope-slab-top" points="393.4,79.8 432.1,102.1 473.6,78.2 434.9,55.9"/>
+              </g>
+              <g class="scope-slab" data-order-drawing="104" data-cents="490">
+                <polygon class="scope-shadow" points="505.9,452.3 560.0,483.5 510.0,513.4 454.2,481.2"/>
+                <polygon class="scope-slab-front" points="469.9,479.4 508.6,501.7 508.6,499.4 469.9,477.1"/>
+                <polygon class="scope-slab-side" points="508.6,501.7 550.0,477.8 550.0,475.5 508.6,499.4"/>
+                <polygon class="scope-slab-top" points="469.9,477.1 508.6,499.4 550.0,475.5 511.3,453.2"/>
+              </g>
+              <g class="scope-slab" data-order-drawing="105" data-cents="1150">
+                <polygon class="scope-shadow" points="133.3,389.5 187.4,420.6 137.4,450.5 81.6,418.3"/>
+                <polygon class="scope-slab-front" points="97.3,416.5 136.1,438.8 136.1,433.5 97.3,411.1"/>
+                <polygon class="scope-slab-side" points="136.1,438.8 177.5,414.9 177.5,409.5 136.1,433.5"/>
+                <polygon class="scope-slab-top" points="97.3,411.1 136.1,433.5 177.5,409.5 138.8,387.2"/>
+              </g>
+              <g class="scope-slab" data-order-drawing="106" data-cents="400">
+                <polygon class="scope-shadow" points="209.9,433.6 263.9,464.8 213.9,494.7 158.1,462.5"/>
+                <polygon class="scope-slab-front" points="173.9,460.7 212.6,483.0 212.6,481.1 173.9,458.8"/>
+                <polygon class="scope-slab-side" points="212.6,483.0 253.9,459.1 253.9,457.2 212.6,481.1"/>
+                <polygon class="scope-slab-top" points="173.9,458.8 212.6,481.1 253.9,457.2 215.2,434.9"/>
+              </g>
+              <g class="scope-slab" data-order-drawing="107" data-cents="550">
+                <polygon class="scope-shadow" points="286.4,477.8 340.4,509.0 290.4,538.9 234.6,506.6"/>
+                <polygon class="scope-slab-front" points="250.4,504.8 289.1,527.2 289.1,524.6 250.4,502.2"/>
+                <polygon class="scope-slab-side" points="289.1,527.2 330.4,503.3 330.4,500.7 289.1,524.6"/>
+                <polygon class="scope-slab-top" points="250.4,502.2 289.1,524.6 330.4,500.7 291.8,478.3"/>
+              </g>
+              <g class="scope-slab" data-order-drawing="108" data-cents="700">
+                <polygon class="scope-shadow" points="362.9,522.0 416.9,553.1 366.9,583.0 311.1,550.8"/>
+                <polygon class="scope-slab-front" points="326.9,549.0 365.6,571.3 365.6,568.1 326.9,545.7"/>
+                <polygon class="scope-slab-side" points="365.6,571.3 406.9,547.4 406.9,544.2 365.6,568.1"/>
+                <polygon class="scope-slab-top" points="326.9,545.7 365.6,568.1 406.9,544.2 368.2,521.8"/>
+              </g>
+              <path class="scope-guide" d="M264 322l12 12"/>
+              <g class="scope-drawn-label">
+                <text x="42" y="315">101 complete → completed</text>
+                <text x="320" y="363">102 =</text>
+                <text class="bug" x="398" y="51">103 760 → 76,000</text>
+                <text x="537" y="497">104 =</text>
+                <text x="94" y="456">105 =</text>
+                <text x="169" y="500">106 =</text>
+                <text x="246" y="544">107 =</text>
+                <text x="323" y="589">108 =</text>
+              </g>
+            </svg>
+            <canvas class="scope-canvas"></canvas>
+            <div class="scope-labels"></div>
+          </div>
+          <ol class="scope-orders sr-only" role="list" aria-label="Order differences">
+              <li data-order="101" data-before="850"><b>101</b> <span class="order-diff">complete → completed</span><span class="sr-only"> · 850 cents</span></li>
+              <li data-order="102" data-before="625"><b>102</b> <span class="order-diff">=</span><span class="sr-only"> · placed · 625 cents</span></li>
+              <li class="bug" data-order="103" data-before="760"><b>103</b> <span class="order-diff">760 → 76,000</span><span class="sr-only"> · completed</span></li>
+              <li data-order="104" data-before="490"><b>104</b> <span class="order-diff">=</span><span class="sr-only"> · completed · 490 cents</span></li>
+              <li data-order="105" data-before="1150"><b>105</b> <span class="order-diff">=</span><span class="sr-only"> · completed · 1150 cents</span></li>
+              <li data-order="106" data-before="400"><b>106</b> <span class="order-diff">=</span><span class="sr-only"> · returned · 400 cents</span></li>
+              <li data-order="107" data-before="550"><b>107</b> <span class="order-diff">=</span><span class="sr-only"> · completed · 550 cents</span></li>
+              <li data-order="108" data-before="700"><b>108</b> <span class="order-diff">=</span><span class="sr-only"> · placed · 700 cents</span></li>
+          </ol>
+          <figcaption class="hero-caption">
+            <span>Exact values from the synthetic Jaffle Shop demo.</span>
+            <span class="bug">Order 103</span>
+          </figcaption>
+        </figure>
       </div>
       <span id="catch-start" class="catch-anchor" aria-hidden="true"></span>
     </section>
@@ -137,8 +194,8 @@
             <caption>Rows by model</caption>
             <thead><tr><th scope="col">Model</th><th scope="col">Before</th><th scope="col">After</th><th scope="col">Changed</th></tr></thead>
             <tbody>
-              <tr><th scope="row"><i class="catch-gutter" aria-hidden="true">+</i>orders</th><td>8</td><td>8</td><td class="catch-added"><span data-catch-scramble>2</span></td></tr>
-              <tr><th scope="row"><i class="catch-gutter" aria-hidden="true">+</i>customers</th><td>4</td><td>4</td><td class="catch-added"><span data-catch-scramble>1</span></td></tr>
+              <tr><th scope="row">orders</th><td>8</td><td>8</td><td>2</td></tr>
+              <tr><th scope="row">customers</th><td>4</td><td>4</td><td>1</td></tr>
             </tbody>
           </table>
         </div>
@@ -151,7 +208,7 @@
           <figcaption>Order <code>101</code> · <code>status</code></figcaption>
           <dl class="catch-readout">
             <div><dt>Before</dt><dd>complete</dd></div>
-            <div><dt><i class="catch-gutter" aria-hidden="true">+</i>After</dt><dd><span data-catch-scramble>complete</span><ins>d</ins></dd></div>
+            <div><dt>After</dt><dd>complete<ins>d</ins></dd></div>
           </dl>
         </figure>
       </article>
@@ -163,7 +220,7 @@
           <figcaption>Order <code>103</code> · <code>amount_cents</code></figcaption>
           <dl class="catch-readout">
             <div><dt>Before</dt><dd>760<span class="catch-track" aria-hidden="true"><i class="catch-order-before"></i></span></dd></div>
-            <div><dt><i class="catch-gutter" aria-hidden="true">+</i>After</dt><dd class="catch-effect"><span data-catch-scramble>76,000</span><span class="catch-track" aria-hidden="true"><i class="catch-order-after"></i></span></dd></div>
+            <div><dt>After<span class="catch-final-label" hidden> (final)</span></dt><dd class="catch-effect">76,000<span class="catch-track" aria-hidden="true"><i class="catch-order-after"></i></span></dd></div>
           </dl>
           <div class="catch-axis" aria-hidden="true"><i class="catch-axis-rule"></i><span>0</span><span class="catch-axis-mid">40,000</span><span class="catch-axis-end">80,000</span></div>
         </figure>
@@ -176,12 +233,12 @@
           <figcaption>Customer <code>2</code> · <code>total_amount_cents</code></figcaption>
           <div class="catch-lineage">
             <svg viewBox="0 0 28 48" preserveAspectRatio="none" aria-hidden="true"><path d="M24 2H5V46H24"/></svg>
-            <span>Order 103 <b data-catch-scramble>76,000</b></span>
+            <span>Order 103 <b>76,000</b></span>
             <span>Customer 2</span>
           </div>
           <dl class="catch-readout">
             <div><dt>Before</dt><dd>1,250<span class="catch-track" aria-hidden="true"><i class="catch-customer-before"></i></span></dd></div>
-            <div><dt><i class="catch-gutter" aria-hidden="true">+</i>After</dt><dd class="catch-effect"><span>76,490</span><span class="catch-track" aria-hidden="true"><i class="catch-customer-after"></i></span></dd></div>
+            <div><dt>After</dt><dd class="catch-effect">76,490<span class="catch-track" aria-hidden="true"><i class="catch-customer-after"></i></span></dd></div>
           </dl>
         </figure>
       </article>
@@ -191,12 +248,12 @@
         <div class="catch-note"><p>The sum of <code>amount_cents</code> rose <code class="catch-effect">1,361.8%</code>. A single order moved both the mean and the upper end of the distribution.</p></div>
         <div class="catch-evidence">
           <table class="catch-table">
-            <caption>All orders · <code data-catch-scramble>amount_cents</code></caption>
+            <caption>All orders · <code>amount_cents</code></caption>
             <thead><tr><th scope="col">Statistic</th><th scope="col">Before</th><th scope="col">After</th></tr></thead>
             <tbody>
-              <tr><th scope="row"><i class="catch-gutter" aria-hidden="true">+</i>Sum</th><td>5,525.0</td><td class="catch-effect"><span data-catch-count data-final="80,765.0">80,765.0</span></td></tr>
-              <tr><th scope="row"><i class="catch-gutter" aria-hidden="true">+</i>Mean</th><td>690.62</td><td class="catch-effect"><span data-catch-count data-final="10,095.62">10,095.62</span></td></tr>
-              <tr><th scope="row"><i class="catch-gutter" aria-hidden="true">+</i>P95</th><td>1,045.0</td><td class="catch-effect"><span data-catch-count data-final="49,802.5">49,802.5</span></td></tr>
+              <tr class="shift-row"><th scope="row">Sum</th><td class="shift-from"><span class="shift-value">5,525.0</span> <span class="shift-ratio">×14.6</span></td><td class="catch-effect"><span data-catch-count data-final="80,765.0">80,765.0</span></td></tr>
+              <tr class="shift-row"><th scope="row">Mean</th><td class="shift-from"><span class="shift-value">690.62</span> <span class="shift-ratio">×14.6</span></td><td class="catch-effect"><span data-catch-count data-final="10,095.62">10,095.62</span></td></tr>
+              <tr class="shift-row"><th scope="row">P95</th><td class="shift-from"><span class="shift-value">1,045.0</span> <span class="shift-ratio">×47.7</span></td><td class="catch-effect"><span data-catch-count data-final="49,802.5">49,802.5</span></td></tr>
             </tbody>
           </table>
         </div>
@@ -208,12 +265,18 @@
     <a href="https://github.com/Ghostboy789/diffscope/pull/1">Read the comment on PR <code>#1</code></a>
   </footer>
 </section>
-    <section class="article-section" id="comment" aria-labelledby="comment-title">
+    <section class="article-section page-width" id="comment" aria-labelledby="comment-title">
       <header class="section-intro">
         <h2 id="comment-title">The PR comment</h2>
         <p>Both models kept the same row count. The comment shows which values changed.</p>
         <a class="source" href="https://github.com/Ghostboy789/diffscope/pull/1">Read the full comment on GitHub</a>
       </header>
+      <figure class="pr-shot">
+        <picture>
+          <source type="image/avif" srcset="img/pr1-comment.avif">
+          <img src="img/pr1-comment.webp" width="1272" height="1640" loading="lazy" decoding="async" alt="The orders section of the diffscope comment on GitHub PR #1, including row counts, numeric shifts, and the order 103 amount change.">
+        </picture>
+      </figure>
       <figure class="evidence">
         <figcaption class="comment-head"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 3h14v10H8l-4 4v-4H3z"/></svg><b>diffscope</b> <span>Jaffle Shop · comment excerpt</span></figcaption>
         <div class="model-pair">
@@ -243,9 +306,9 @@
               <caption>Numeric shifts <code>amount_cents</code></caption>
               <thead><tr><th scope="col">Statistic</th><th scope="col">Before</th><th scope="col">After</th></tr></thead>
               <tbody>
-                <tr><th scope="row">Mean</th><td>690.62</td><td class="bug" data-final="10,095.62">10,095.62</td></tr>
-                <tr><th scope="row">P95</th><td>1,045.0</td><td class="bug" data-final="49,802.5">49,802.5</td></tr>
-                <tr><th scope="row">Sum</th><td>5,525.0</td><td class="bug" data-final="80,765.0">80,765.0</td></tr>
+                <tr class="shift-row"><th scope="row">Mean</th><td class="shift-from"><span class="shift-value">690.62</span> <span class="shift-ratio">×14.6</span></td><td class="bug">10,095.62</td></tr>
+                <tr class="shift-row"><th scope="row">P95</th><td class="shift-from"><span class="shift-value">1,045.0</span> <span class="shift-ratio">×47.7</span></td><td class="bug">49,802.5</td></tr>
+                <tr class="shift-row"><th scope="row">Sum</th><td class="shift-from"><span class="shift-value">5,525.0</span> <span class="shift-ratio">×14.6</span></td><td class="bug">80,765.0</td></tr>
               </tbody>
             </table>
             <table class="data-table examples">
@@ -253,7 +316,7 @@
               <thead><tr><th scope="col">order_id / column</th><th scope="col">Before</th><th scope="col">After</th></tr></thead>
               <tbody>
                 <tr><th scope="row">101 <small>status</small></th><td>complete</td><td>completed</td></tr>
-                <tr><th scope="row">103 <small>amount_cents</small></th><td>760</td><td class="bug">76,000</td></tr>
+                <tr class="shift-row"><th scope="row">103 <small>amount_cents</small></th><td class="shift-from"><span class="shift-value">760</span> <span class="shift-ratio">×100</span></td><td class="bug">76,000</td></tr>
               </tbody>
             </table>
           </section>
@@ -280,16 +343,16 @@
               <caption>Numeric shifts <code>total_amount_cents</code></caption>
               <thead><tr><th scope="col">Statistic</th><th scope="col">Before</th><th scope="col">After</th></tr></thead>
               <tbody>
-                <tr><th scope="row">Mean</th><td>1,381.25</td><td class="bug" data-final="20,191.25">20,191.25</td></tr>
-                <tr><th scope="row">Median</th><td>1,637.5</td><td class="bug" data-final="2,137.5">2,137.5</td></tr>
-                <tr><th scope="row">P95</th><td>2,216.25</td><td class="bug" data-final="65,354.0">65,354.0</td></tr>
-                <tr><th scope="row">Sum</th><td>5,525.0</td><td class="bug" data-final="80,765.0">80,765.0</td></tr>
+                <tr class="shift-row"><th scope="row">Mean</th><td class="shift-from"><span class="shift-value">1,381.25</span> <span class="shift-ratio">×14.6</span></td><td class="bug">20,191.25</td></tr>
+                <tr class="shift-row"><th scope="row">Median</th><td class="shift-from"><span class="shift-value">1,637.5</span> <span class="shift-ratio">×1.3</span></td><td class="bug">2,137.5</td></tr>
+                <tr class="shift-row"><th scope="row">P95</th><td class="shift-from"><span class="shift-value">2,216.25</span> <span class="shift-ratio">×29.5</span></td><td class="bug">65,354.0</td></tr>
+                <tr class="shift-row"><th scope="row">Sum</th><td class="shift-from"><span class="shift-value">5,525.0</span> <span class="shift-ratio">×14.6</span></td><td class="bug">80,765.0</td></tr>
               </tbody>
             </table>
             <table class="data-table examples">
               <caption>Example rows</caption>
               <thead><tr><th scope="col">customer_id / column</th><th scope="col">Before</th><th scope="col">After</th></tr></thead>
-              <tbody><tr><th scope="row">2 <small>total_amount_cents</small></th><td>1,250</td><td class="bug">76,490</td></tr></tbody>
+              <tbody><tr class="shift-row"><th scope="row">2 <small>total_amount_cents</small></th><td class="shift-from"><span class="shift-value">1,250</span> <span class="shift-ratio">×61.2</span></td><td class="bug">76,490</td></tr></tbody>
             </table>
           </section>
         </div>
@@ -319,25 +382,31 @@
         <a class="source" href="https://github.com/Ghostboy789/diffscope/blob/main/bench/results.md">Benchmark results</a>
       </header>
       <figure class="evidence">
+        <svg class="matrix-defs" width="0" height="0" aria-hidden="true">
+          <defs><pattern id="row-dot" width="6" height="6" patternUnits="userSpaceOnUse"><rect width="3" height="3" rx=".5"/></pattern></defs>
+        </svg>
         <table class="data-table timings">
           <caption>Time to compare two tables</caption>
           <thead><tr><th scope="col">Rows per side</th><th scope="col">Changed rows</th><th scope="col">Wall time (s)</th></tr></thead>
           <tbody>
-            <tr>
-              <th scope="row">100,000</th><td>1,000</td>
-              <td><span class="timing-value" data-final="0.023">0.023</span><svg class="timing-track" viewBox="0 0 655 8" preserveAspectRatio="none" aria-hidden="true"><rect width="23" height="8"/></svg></td>
+            <tr class="benchmark-row">
+              <th scope="row">100,000<span class="matrices"><svg class="dot-matrix" width="60" height="6" viewBox="0 0 60 6" aria-hidden="true"><rect width="100%" height="100%" fill="url(#row-dot)"/></svg><svg class="dot-matrix matrix-compact" width="6" height="6" viewBox="0 0 6 6" aria-hidden="true"><rect width="100%" height="100%" fill="url(#row-dot)"/></svg></span></th><td>1,000</td>
+              <td><span class="timing-value" data-final="0.023">0.023</span><svg class="timing-track" viewBox="0 0 541 8" preserveAspectRatio="none" aria-hidden="true"><rect width="23" height="8"/></svg><span class="timing-rate">≈4,347,826 rows/s</span></td>
             </tr>
-            <tr>
-              <th scope="row">1,000,000</th><td>10,000</td>
-              <td><span class="timing-value" data-final="0.084">0.084</span><svg class="timing-track" viewBox="0 0 655 8" preserveAspectRatio="none" aria-hidden="true"><rect width="84" height="8"/></svg></td>
+            <tr class="benchmark-row">
+              <th scope="row">1,000,000<span class="matrices"><svg class="dot-matrix" width="300" height="12" viewBox="0 0 300 12" aria-hidden="true"><rect width="100%" height="100%" fill="url(#row-dot)"/></svg><svg class="dot-matrix matrix-compact" width="60" height="6" viewBox="0 0 60 6" aria-hidden="true"><rect width="100%" height="100%" fill="url(#row-dot)"/></svg></span></th><td>10,000</td>
+              <td><span class="timing-value" data-final="0.071">0.071</span><svg class="timing-track" viewBox="0 0 541 8" preserveAspectRatio="none" aria-hidden="true"><rect width="71" height="8"/></svg><span class="timing-rate">≈14,084,507 rows/s</span></td>
             </tr>
-            <tr>
-              <th scope="row">10,000,000</th><td>100,000</td>
-              <td><span class="timing-value" data-final="0.655">0.655</span><svg class="timing-track" viewBox="0 0 655 8" preserveAspectRatio="none" aria-hidden="true"><rect width="655" height="8"/></svg></td>
+            <tr class="benchmark-row">
+              <th scope="row">10,000,000<span class="matrices"><svg class="dot-matrix" width="300" height="120" viewBox="0 0 300 120" aria-hidden="true"><rect width="100%" height="100%" fill="url(#row-dot)"/></svg><svg class="dot-matrix matrix-compact" width="120" height="30" viewBox="0 0 120 30" aria-hidden="true"><rect width="100%" height="100%" fill="url(#row-dot)"/></svg></span></th><td>100,000</td>
+              <td><span class="timing-value" data-final="0.541">0.541</span><svg class="timing-track" viewBox="0 0 541 8" preserveAspectRatio="none" aria-hidden="true"><rect width="541" height="8"/></svg><span class="timing-rate">≈18,484,288 rows/s</span></td>
             </tr>
           </tbody>
         </table>
-        <figcaption class="figure-note">DuckDB <span class="number">2.0.1</span> on <code>Darwin arm64</code> with a <span class="number">4 GB</span> memory limit. Each time is a single wall-clock observation and excludes table creation. A confidence interval requires repeated runs.</figcaption>
+        <figcaption class="figure-note">
+          <span class="matrix-legend">Each dot represents <span class="number">10,000</span> rows.</span>
+          <span class="matrix-legend matrix-compact">Each dot represents <span class="number">100,000</span> rows.</span>
+          DuckDB <span class="number">2.0.1</span> on <code>Darwin arm64</code> with a <span class="number">4 GB</span> memory limit. Each time is a single wall-clock observation and excludes table creation. A confidence interval requires repeated runs.</figcaption>
       </figure>
     </section>
 
@@ -416,7 +485,7 @@ concurrency:
     </section>
   </main>
   <footer class="page-footer page-width">
-    <p>Medhansh Shekhawat</p>
+    <div><a href="#top" class="wordmark" data-proximity>diffscope</a><p>Medhansh Shekhawat</p></div>
     <nav aria-label="Author and repository">
       <a href="https://github.com/Ghostboy789">GitHub</a>
       <a href="https://www.linkedin.com/in/medhansh-shekhawat">LinkedIn</a>
@@ -425,10 +494,7 @@ concurrency:
   </footer>
   <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/gsap.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/ScrollTrigger.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/SplitText.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/ScrambleTextPlugin.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/DrawSVGPlugin.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/Flip.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/Draggable.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/InertiaPlugin.min.js"></script>
   <script defer src="https://unpkg.com/lenis@1.3.28/dist/lenis.min.js"></script>

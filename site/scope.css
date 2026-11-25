@@ -1,0 +1,139 @@
+.scope {
+  min-width: 0;
+  margin: 0;
+  align-self: end;
+  font: var(--type-small)/1.45 var(--mono);
+}
+.scope-head, .hero-caption {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2);
+  color: var(--muted);
+}
+.scope-head { z-index: 1; min-height: 44px; align-items: center; justify-content: flex-start; pointer-events: none; }
+.scope-head > span:nth-child(2) { margin-inline-end: auto; }
+.scope-playback {
+  visibility: hidden;
+  min-height: 44px;
+  margin-inline-end: -.25em;
+  padding: 0 .25em;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--type-micro);
+  text-decoration: underline;
+  text-underline-offset: .18em;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.scope.has-scene .scope-playback { visibility: visible; }
+.scope-playback:hover { color: var(--accent); }
+.scope-head span:first-child { color: var(--ink); font-weight: 600; }
+.hero-caption {
+  padding-top: var(--space-2);
+  border-top: var(--border);
+  font-size: var(--type-micro);
+}
+.hero-caption .bug { flex: none; }
+.scope-window {
+  position: absolute;
+  inset: calc(-1 * var(--mast-height)) 0 2.75rem 38%;
+}
+.scope-drawing, .scope-canvas, .scope-labels {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.scope-drawing { padding: 3% 0 0 1%; }
+.scope-canvas {
+  --bleed-inline: linear-gradient(to right, transparent, black 18%);
+  --bleed-block: linear-gradient(to bottom, transparent, black 16%, black 77%, transparent 99%);
+  -webkit-mask-image: var(--bleed-inline), var(--bleed-block);
+  mask-image: var(--bleed-inline), var(--bleed-block);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+.scope-canvas, .scope-labels { opacity: 0; }
+.scope-drawing, .scope-canvas, .scope-labels { transition: opacity 420ms var(--ease-out); }
+.scope.has-scene :is(.scope-canvas, .scope-labels) { opacity: 1; }
+.scope.has-scene .scope-drawing { opacity: 0; }
+.scope-wall { fill: url(#wall-light); }
+.scope-floor { fill: url(#floor-light); }
+.scope-wall-base { stop-color: var(--wall); stop-opacity: .57; }
+.scope-wall-top { stop-color: var(--wall); stop-opacity: .04; }
+.scope-floor-base { stop-color: var(--platform); stop-opacity: .65; }
+.scope-floor-edge { stop-color: var(--platform); stop-opacity: .11; }
+.scope-rule { fill: none; stroke: var(--control); stroke-width: 1; opacity: .56; }
+.scope-tick {
+  fill: var(--ink);
+  font: 26px var(--mono);
+  text-anchor: end;
+  dominant-baseline: middle;
+}
+.scope-shadow { fill: var(--contact); opacity: .19; }
+.scope-slab { color: var(--bar); }
+.scope-slab.bug { color: var(--alarm-mesh); }
+.scope-slab-front { fill: currentColor; }
+.scope-slab-side { fill: color-mix(in srgb, currentColor 72%, var(--contact)); }
+.scope-slab-top { fill: color-mix(in srgb, currentColor 63%, var(--rim)); }
+.scope-tag, .scope-axis-tick {
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: max-content;
+  font: var(--type-micro)/1.25 var(--mono);
+  color: var(--ink);
+  white-space: nowrap;
+}
+.scope-tag {
+  padding: .24em .23em;
+  background: var(--glass);
+  border: var(--border);
+  border-radius: var(--radius-control);
+  box-shadow: inset 0 1px 0 var(--panel-edge);
+}
+.scope-tag.bug { color: var(--alarm); font-weight: 600; }
+.scope-tag b { font-weight: 600; }
+.scope-tag-anchor, .scope-tag-leader {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.scope-tag-leader {
+  width: 1px;
+  height: 1px;
+  margin-top: -.5px;
+  background: var(--muted);
+  transform-origin: left center;
+}
+
+.scope-drawn-label {
+  fill: var(--ink);
+  stroke: var(--field-light);
+  stroke-width: 2px;
+  paint-order: stroke;
+  font: 26px var(--mono);
+}
+.scope-drawn-label .bug { fill: var(--alarm); font-weight: 600; }
+.scope-guide { fill: none; stroke: var(--control); stroke-width: 1; }
+.scope-rule, .scope-guide { vector-effect: non-scaling-stroke; }
+@media (max-width: 55rem) {
+  .scope { position: relative; padding-top: clamp(19.5rem, 89vw, 32rem); }
+  .scope-window { inset: 0 calc(-1 * var(--gutter)) auto; height: clamp(20.5rem, 92vw, 33rem); }
+  .scope-drawing { padding: 0; }
+  .scope-canvas {
+    --bleed-inline: linear-gradient(to right, transparent, black 8%, black 94%, transparent);
+    --bleed-block: linear-gradient(to bottom, transparent, black 10%, black 82%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scope-drawing, .scope-canvas, .scope-labels { transition: none; }
+  .scope.has-scene .scope-drawing { opacity: 1; }
+  .scope.has-scene :is(.scope-canvas, .scope-labels) { opacity: 0; }
+  .scope.has-scene .scope-playback { visibility: hidden; }
+}

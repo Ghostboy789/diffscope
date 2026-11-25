@@ -1,7 +1,7 @@
 (() => {
-  const { gsap, ScrollTrigger, ScrambleTextPlugin, DrawSVGPlugin } = window;
+  const { gsap, ScrollTrigger, DrawSVGPlugin } = window;
   const section = document.getElementById("catch");
-  if (!section || !gsap || !ScrollTrigger || !ScrambleTextPlugin || !DrawSVGPlugin) return;
+  if (!section || !gsap || !ScrollTrigger) return;
 
   const stage = section.querySelector(".catch-stage");
   const steps = Array.from(section.querySelectorAll(".catch-step"));
@@ -24,7 +24,7 @@
     function animatedCopy(node) {
       const text = node.textContent;
       const accessible = document.createElement("span");
-      accessible.className = "catch-accessible";
+      accessible.className = "sr-only";
       accessible.textContent = text;
       const visible = document.createElement("span");
       visible.setAttribute("aria-hidden", "true");
@@ -44,7 +44,8 @@
       const end = figure.querySelector(".catch-axis-end");
       const before = figure.querySelector(".catch-order-before");
       const after = figure.querySelector(".catch-order-after");
-      if (!axis || !rule || !mid || !end || !before || !after) return;
+      const finalLabel = figure.querySelector(".catch-final-label");
+      if (!axis || !rule || !mid || !end || !before || !after || !finalLabel) return;
 
       const state = { progress: 0 };
       let width = axis.clientWidth;
@@ -65,6 +66,7 @@
         mid.style.opacity = String(Math.max(0, Math.min(1, (axisWidth - 260) / 40)));
         mid.textContent = integer.format(roundTick(limit / 2));
         end.textContent = integer.format(roundTick(limit));
+        finalLabel.hidden = p === 1;
       }
       const resize = () => { width = axis.clientWidth; render(); };
       ScrollTrigger.addEventListener("refresh", resize);
@@ -74,6 +76,7 @@
         mid.style.removeProperty("opacity");
         mid.textContent = "40,000";
         end.textContent = "80,000";
+        finalLabel.hidden = true;
       });
       render();
       timeline.to(state, { progress: 1, duration: 1.5, ease: "none", onUpdate: render }, 0);
@@ -92,30 +95,10 @@
 
     function stepAnimation(step) {
       const timeline = gsap.timeline({ paused: true });
-      const gutters = step.querySelectorAll(".catch-gutter");
-      if (gutters.length) timeline.fromTo(gutters, { scaleX: 0 }, {
-        scaleX: 1, duration: 0.35, stagger: 0.08
-      }, 0.1);
-      // The scramble runs in real time, so a paused scroll always rests on the true value.
-      const scramble = gsap.timeline({ paused: true });
-      step.querySelectorAll("[data-catch-scramble]").forEach((node, i) => {
-        const visible = animatedCopy(node);
-        scramble.to(visible, {
-          scrambleText: { text: visible.textContent, chars: "+-/", speed: 0.65 },
-          duration: 0.55
-        }, i * 0.08);
-      });
-      let started = false;
-      if (scramble.getChildren().length) timeline.call(() => {
-        if (started) return;
-        started = true;
-        scramble.restart();
-      }, null, 0.01);
-
       const zoom = step.querySelector("[data-catch-zoom]");
       const customer = step.querySelector("[data-catch-customer]");
       if (zoom) orderZoom(zoom, timeline);
-      if (customer) customerFlow(customer, timeline);
+      if (customer && DrawSVGPlugin) customerFlow(customer, timeline);
       return timeline;
     }
 
@@ -126,8 +109,8 @@
       const beforeCell = cell?.previousElementSibling;
       if (!cell || !beforeCell) return;
       const at = i * 0.1;
-      counts.add(summary, node, parse(beforeCell.textContent), 0.8, at, "power1.out", animatedCopy);
-      summary.set(cell, { backgroundColor: "var(--coral)", color: "var(--stage)" }, at + 0.8);
+      counts.add(summary, node, parse(beforeCell.querySelector(".shift-value").textContent), 0.8, at, "power1.out", animatedCopy);
+      summary.set(cell, { backgroundColor: "var(--alarm)", color: "var(--panel)" }, at + 0.8);
       summary.set(cell, { clearProps: "backgroundColor,color" }, at + 1);
     });
 
@@ -139,6 +122,7 @@
     }));
     if (conditions.desktop) {
       section.classList.add("catch-pinned");
+      const summaryRows = steps[4].querySelectorAll(".inspectable");
       let current = -1;
       let ends = [];
       let summaryStarted = false;
@@ -160,6 +144,7 @@
           steps[current]?.classList.remove("is-current");
           steps[i].classList.add("is-current");
           current = i;
+          summaryRows.forEach(row => { row.tabIndex = i === 4 ? 0 : -1; });
         }
         const start = ends[i - 1] || 0;
         animations[i].progress((offset - start) / (ends[i] - start), false);
@@ -175,6 +160,7 @@
       cleanups.push(() => {
         section.classList.remove("catch-pinned");
         steps.forEach(step => step.classList.remove("is-current"));
+        summaryRows.forEach(row => { row.tabIndex = 0; });
       });
     } else {
       steps.forEach((step, i) => {

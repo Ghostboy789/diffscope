@@ -1,62 +1,97 @@
 :root {
-  color-scheme: dark;
-  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  color-scheme: light;
+  --stage: #e9eef0;
+  --field-light: #f5f7f8;
+  --panel: #f5f7f8;
+  --panel-edge: #ffffff;
+  --ink: #18242a;
+  --muted: #415561;
+  --line: #aebcc3;
+  --control: #647782;
+  --accent: #055578;
+  --alarm: #9f3929;
+  --bar: #697f88;
+  --plot: #dce5e9;
+  --platform: #b2c2cb;
+  --rim: #d9f0f9;
+  --wall: #c8d6dd;
+  --alarm-mesh: #ab4a36;
+  --contact: #344650;
+  --glass: rgb(246 250 252 / 91%);
+  --on-accent: #ffffff;
+  --shadow: rgb(42 62 72 / 22%);
+  --grain: url("img/grain.svg");
 
-  --stage: #0d0e0b;
-  --panel: #17190f;
-  --ink: #f1eee4;
-  --muted: #8f8c80;
-  --line: #2c2e24;
-  --lime: #c8f031;
-  --coral: #ff4f2e;
-  --pink: #ffb4d6;
-  --on-lime: #0d0e0b;
-
-  --display: "Big Shoulders Display", "Arial Narrow", sans-serif;
-  --sans: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
-  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
-
-  --step--1: 0.875rem;
-  --step-0: 1.0625rem;
-  --step-1: 1.375rem;
-  --step-2: 2rem;
-  --step-3: clamp(2.5rem, 6vw, 4.5rem);
-  --step-4: clamp(3rem, 12vw, 11rem);
-
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
+  --display: "Fraunces", Georgia, serif;
+  --body: "Avenir Next", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", Menlo, monospace;
+  --type-small: .875rem;
+  --type-micro: .75rem;
+  --heading: clamp(2rem, 4.2vw, 4.5rem);
+  --space-1: .25rem;
+  --space-2: .5rem;
   --space-3: 1rem;
   --space-4: 1.5rem;
   --space-5: 2.5rem;
   --space-6: 4rem;
-  --space-7: 8rem;
-
-  --measure: 64ch;
-  --wide: 80rem;
-  --radius: 0;
-  --border: 1px solid var(--line);
-}
-
-:root[data-theme="light"] {
-  color-scheme: light;
-  --stage: #eff1ed;
-  --panel: #f9faf8;
-  --ink: #151915;
-  --muted: #50594f;
-  --line: #bdc6bc;
-  --lime: #476512;
-  --coral: #ae361c;
-  --pink: #ae3c70;
-  --on-lime: #ffffff;
-}
-
-:root {
-  --gutter: clamp(var(--space-3), 4vw, var(--space-6));
+  --section-space: clamp(3.5rem, 7vw, 7rem);
+  --gutter: clamp(1rem, 4.2vw, 4rem);
+  --wide: 81rem;
+  --measure: 62ch;
+  --radius-panel: .75rem;
+  --radius-control: .3rem;
   --mast-height: 4.5rem;
-  --micro: 0.75rem;
-  --stage-space: clamp(var(--space-5), 6vw, var(--space-7));
-  --section-space: clamp(2.5rem, 5vw, 4.5rem);
-  --cell: clamp(var(--space-2), 1.4vw, var(--space-3));
+  --border: 1px solid var(--line);
+  --ease-out: cubic-bezier(.22, 1, .36, 1);
 }
 
-* { font-variant-ligatures: none; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --stage: #10171b;
+    --field-light: #202c33;
+    --panel: #263239;
+    --panel-edge: #52626b;
+    --ink: #eef4f5;
+    --muted: #b5c5cb;
+    --line: #43555d;
+    --control: #899da7;
+    --accent: #a2d9f1;
+    --alarm: #ffa38d;
+    --bar: #9eafb7;
+    --plot: #222f36;
+    --platform: #344751;
+    --rim: #c9e8f5;
+    --wall: #253741;
+    --alarm-mesh: #bc5340;
+    --contact: #080b0e;
+    --on-accent: #102129;
+    --glass: rgb(32 44 51 / 92%);
+    --shadow: rgb(0 0 0 / 46%);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --stage: #10171b;
+  --field-light: #202c33;
+  --panel: #263239;
+  --panel-edge: #52626b;
+  --ink: #eef4f5;
+  --muted: #b5c5cb;
+  --line: #43555d;
+  --control: #899da7;
+  --accent: #a2d9f1;
+  --alarm: #ffa38d;
+  --bar: #9eafb7;
+  --plot: #222f36;
+  --platform: #344751;
+  --rim: #c9e8f5;
+  --wall: #253741;
+  --alarm-mesh: #bc5340;
+  --contact: #080b0e;
+  --on-accent: #102129;
+  --glass: rgb(32 44 51 / 92%);
+  --shadow: rgb(0 0 0 / 46%);
+}

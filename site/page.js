@@ -1,25 +1,34 @@
 (() => {
-  const { gsap, ScrollTrigger, SplitText, ScrambleTextPlugin, DrawSVGPlugin, Flip, Draggable, InertiaPlugin, Lenis } = window;
+  const { gsap, ScrollTrigger, DrawSVGPlugin, Draggable, InertiaPlugin, Lenis } = window;
   const motion = "(prefers-reduced-motion: no-preference)";
   const reduce = "(prefers-reduced-motion: reduce)";
 
   const root = document.documentElement;
   const toggle = document.querySelector(".theme-toggle");
+  const systemDark = matchMedia("(prefers-color-scheme: dark)");
+  const isDark = () => root.dataset.theme ? root.dataset.theme === "dark" : systemDark.matches;
+  const syncToggle = () => toggle.setAttribute("aria-pressed", String(isDark()));
   function switchTheme() {
-    const light = root.dataset.theme !== "light";
-    root.dataset.theme = light ? "light" : "dark";
-    toggle.setAttribute("aria-pressed", String(light));
+    root.dataset.theme = isDark() ? "light" : "dark";
+    syncToggle();
     try { localStorage.setItem("diffscope-theme", root.dataset.theme); } catch {}
+    window.dispatchEvent(new Event("diffscope:theme"));
   }
   toggle.hidden = false;
-  toggle.setAttribute("aria-pressed", String(root.dataset.theme === "light"));
+  syncToggle();
+  systemDark.addEventListener("change", syncToggle);
   let dragged = false;
   toggle.addEventListener("pointerdown", () => { dragged = false; });
   toggle.addEventListener("click", event => {
     if (event.detail === 0 || !dragged) switchTheme();
   });
 
-  document.querySelectorAll(".instructions pre").forEach(pre => {
+  let commandHeading = "";
+  document.querySelectorAll(".instructions h3, .instructions pre").forEach(pre => {
+    if (pre.matches("h3")) {
+      commandHeading = pre.textContent;
+      return;
+    }
     const code = pre.querySelector("code");
     if (!code) return;
     const command = code.textContent;
@@ -29,6 +38,7 @@
     button.type = "button";
     button.className = "copy-button";
     button.textContent = "Copy";
+    button.setAttribute("aria-label", "Copy: " + commandHeading);
     const status = document.createElement("span");
     status.className = "sr-only";
     status.setAttribute("role", "status");
@@ -46,7 +56,7 @@
           button.textContent = "Copy";
           delete button.dataset.copied;
           status.textContent = "";
-        }, 200);
+        }, 1500);
       } catch {
         const selection = window.getSelection();
         if (!selection) return;
@@ -62,9 +72,25 @@
     });
   });
 
+  let inspected;
+  document.querySelectorAll(".shift-row, .benchmark-row").forEach(row => {
+    row.classList.add("inspectable");
+    row.tabIndex = 0;
+    row.addEventListener("click", () => {
+      inspected?.removeAttribute("data-inspecting");
+      inspected = row;
+      row.setAttribute("data-inspecting", "");
+    });
+  });
+  document.addEventListener("click", event => {
+    if (inspected && !inspected.contains(event.target)) {
+      inspected.removeAttribute("data-inspecting");
+      inspected = undefined;
+    }
+  });
+
   if (!gsap) return;
-  gsap.registerPlugin(...[ScrollTrigger, SplitText, ScrambleTextPlugin, DrawSVGPlugin, Flip,
-    Draggable, InertiaPlugin].filter(Boolean));
+  gsap.registerPlugin(...[ScrollTrigger, DrawSVGPlugin, Draggable, InertiaPlugin].filter(Boolean));
   const media = gsap.matchMedia();
 
   if (Draggable && InertiaPlugin) {
@@ -99,6 +125,48 @@
       };
     });
   }
+  media.add(motion, () => {
+    gsap.from("#headline", { y: 8, duration: .38, ease: "power3.out", clearProps: "transform" });
+  });
+
+  media.add("(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)", () => {
+    const listeners = [];
+    document.querySelectorAll("[data-proximity]").forEach(element => {
+      const area = element.closest(".hero-copy, .page-footer");
+      const readWeight = Number(getComputedStyle(element).fontWeight);
+      const state = { weight: readWeight };
+      let target = readWeight;
+      const updateWeight = gsap.quickTo(state, "weight", {
+        duration: .2,
+        ease: "power2.out",
+        onUpdate: () => element.style.setProperty("--weight", Math.round(state.weight))
+      });
+      const move = event => {
+        if (event.pointerType === "touch") return;
+        const range = element.getBoundingClientRect();
+        const distance = Math.hypot(
+          Math.max(range.left - event.clientX, 0, event.clientX - range.right),
+          Math.max(range.top - event.clientY, 0, event.clientY - range.bottom)
+        );
+        const weight = Math.round((readWeight + 105 - Math.min(distance, 240) * .83) / 5) * 5;
+        if (weight !== target) {
+          target = weight;
+          updateWeight(weight);
+        }
+      };
+      const leave = () => { target = readWeight; updateWeight(readWeight); };
+      area.addEventListener("pointermove", move, { passive: true });
+      area.addEventListener("pointerleave", leave);
+      listeners.push(() => {
+        updateWeight.tween.kill();
+        area.removeEventListener("pointermove", move);
+        area.removeEventListener("pointerleave", leave);
+        element.style.removeProperty("--weight");
+      });
+    });
+    return () => listeners.forEach(remove => remove());
+  });
+
   if (!ScrollTrigger) return;
   media.add("(min-width: 768px) and (pointer: fine) and (prefers-reduced-motion: no-preference)", () => {
     if (!Lenis || navigator.maxTouchPoints > 0) return;
@@ -133,30 +201,13 @@
       return visible;
     }
 
-    function onView(element, hasCounts = false) {
-      const trigger = { trigger: element, start: "top 94%", once: true };
-      if (hasCounts) {
-        trigger.end = "bottom top";
-        trigger.onLeave = self => self.animation.progress(1, false);
-        trigger.onLeaveBack = self => {
-          if (self.animation.isActive()) self.animation.progress(1, false);
-        };
-      }
-      const timeline = gsap.timeline({ scrollTrigger: trigger });
-      if (hasCounts) restore.push(counts.finishWhenHidden(timeline));
-      return timeline;
+    function onView(element) {
+      return gsap.timeline({ scrollTrigger: { trigger: element, start: "top 94%", once: true } });
     }
-    const comment = document.querySelector("#comment .evidence");
-    onView(comment).from(comment, { y: 36, duration: 0.45, ease: "power3.out" });
-    document.querySelectorAll(".numeric-shifts").forEach(table => {
-      const timeline = onView(table, true);
-      table.querySelectorAll("tbody tr").forEach((row, i) => {
-        const [, before, after] = row.cells;
-        const at = i * 0.1;
-        counts.add(timeline, after, Number(before.textContent.replaceAll(",", "")), 0.8, at, "power2.out", overlay);
-        timeline.set(after, { backgroundColor: "var(--coral)", color: "var(--stage)" }, at + 0.8)
-          .set(after, { clearProps: "backgroundColor,color" }, at + 1);
-      });
+    const shot = document.querySelector(".pr-shot");
+    gsap.fromTo(shot.querySelector("picture"), { rotateX: 8 }, {
+      rotateX: 0, ease: "none",
+      scrollTrigger: { trigger: shot, start: "top bottom", end: "top 26%", scrub: true }
     });
     const limits = document.querySelector("#limits");
     onView(limits).from(limits.querySelector(".limits-rule"), {
@@ -187,14 +238,16 @@
 
     const timings = document.querySelector(".timings");
     if (timings) {
-      const timeline = onView(timings, true);
+      const timeline = onView(timings);
       timings.querySelectorAll("tbody tr").forEach(row => {
         const label = row.querySelector(".timing-value");
         const bar = row.querySelector(".timing-track rect");
         if (!label || !bar) return;
-        const duration = Number(label.textContent) * 3;
-        counts.add(timeline, label, 0, duration, 0, "none", overlay);
-        timeline.from(bar, { scaleX: 0, duration, ease: "none" }, 0);
+        const duration = Number(label.dataset.final) * 2.8;
+        timeline.from(bar, { scaleX: 0, duration, ease: "none" }, 0)
+          .fromTo(row.querySelectorAll(".dot-matrix"), { clipPath: "inset(0 100% 0 0)" }, {
+            clipPath: "inset(0 0% 0 0)", duration, ease: "none", immediateRender: false
+          }, 0);
       });
     }
 
