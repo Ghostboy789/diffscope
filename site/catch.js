@@ -10,7 +10,7 @@
   // page.js registers the plugins before this deferred script runs.
   const media = gsap.matchMedia();
   media.add({
-    desktop: "(min-width: 768px)",
+    desktop: "(min-width: 768px) and (min-height: 640px) and (pointer: fine)",
     motion: "(prefers-reduced-motion: no-preference)",
     reduced: "(prefers-reduced-motion: reduce)"
   }, ({ conditions }) => {
@@ -32,20 +32,6 @@
       node.replaceChildren(accessible, visible);
       cleanups.push(() => node.replaceChildren(text));
       return visible;
-    }
-
-    function count(timeline, node, before, at) {
-      const original = node.textContent;
-      const digits = original.split(".")[1]?.length || 0;
-      const format = new Intl.NumberFormat("en-US", {
-        minimumFractionDigits: digits, maximumFractionDigits: digits
-      });
-      const visible = animatedCopy(node);
-      const state = { value: before };
-      timeline.fromTo(state, { value: before }, {
-        value: parse(original), duration: 0.8, ease: "power1.out",
-        onUpdate: () => { visible.textContent = format.format(state.value); }
-      }, at);
     }
 
     // Tick labels keep two significant figures so a paused scrub never shows fractional cents.
@@ -106,9 +92,7 @@
 
     function stepAnimation(step) {
       const timeline = gsap.timeline({ paused: true });
-      const flap = step.querySelector(".catch-position b");
       const gutters = step.querySelectorAll(".catch-gutter");
-      if (flap) timeline.fromTo(flap, { rotationX: -88 }, { rotationX: 0, duration: 0.35 }, 0);
       if (gutters.length) timeline.fromTo(gutters, { scaleX: 0 }, {
         scaleX: 1, duration: 0.35, stagger: 0.08
       }, 0.1);
@@ -121,7 +105,12 @@
           duration: 0.55
         }, i * 0.08);
       });
-      if (scramble.getChildren().length) timeline.call(() => scramble.restart(), null, 0.01);
+      let started = false;
+      if (scramble.getChildren().length) timeline.call(() => {
+        if (started) return;
+        started = true;
+        scramble.restart();
+      }, null, 0.01);
 
       const zoom = step.querySelector("[data-catch-zoom]");
       const customer = step.querySelector("[data-catch-customer]");
@@ -137,48 +126,67 @@
       const beforeCell = cell?.previousElementSibling;
       if (!cell || !beforeCell) return;
       const at = i * 0.1;
-      count(summary, node, parse(beforeCell.textContent), at);
+      counts.add(summary, node, parse(beforeCell.textContent), 0.8, at, "power1.out", animatedCopy);
       summary.set(cell, { backgroundColor: "var(--coral)", color: "var(--stage)" }, at + 0.8);
       summary.set(cell, { clearProps: "backgroundColor,color" }, at + 1);
     });
 
+    cleanups.push(counts.finishWhenHidden(summary));
+    const finishSummary = () => summary.progress(1, false);
     const animations = steps.map(stepAnimation);
+    const flaps = steps.map(step => gsap.from(step.querySelector(".catch-position b"), {
+      rotationX: -50, duration: 0.2, ease: "power2.out", paused: true, immediateRender: false
+    }));
     if (conditions.desktop) {
       section.classList.add("catch-pinned");
-      gsap.set(steps.slice(1), { opacity: 0, pointerEvents: "none" });
-      const story = gsap.timeline({ paused: true });
-      // Times are viewport heights, with 1.5 of the 3.5 reserved for the axis zoom.
-      const starts = [0, 0.48, 0.96, 2.46, 3.05, 3.5];
-      steps.forEach((step, i) => {
-        if (i > 0) {
-          story.set(steps[i - 1], { opacity: 0, pointerEvents: "none" }, starts[i]);
-          story.set(step, { opacity: 1, pointerEvents: "auto" }, starts[i]);
-        }
-        const duration = (starts[i + 1] - starts[i]) * (i === 2 ? 0.96 : 0.8);
-        story.add(animations[i].duration(duration).paused(false), starts[i]);
-      });
-      story.to({}, { duration: starts[5] - story.duration() });
+      let current = -1;
+      let ends = [];
       let summaryStarted = false;
-      ScrollTrigger.create({
-        trigger: stage, animation: story, pin: true, scrub: true,
-        start: () => stage.offsetHeight <= window.innerHeight ? "center center" : "top top",
-        end: () => "+=" + window.innerHeight * starts[5],
-        onUpdate: self => {
-          if (!summaryStarted && self.progress >= starts[4] / starts[5]) {
-            summaryStarted = true;
-            summary.play();
-          }
+      function measure() {
+        let distance = 0;
+        ends = steps.map(step => {
+          distance += step.offsetHeight;
+          return distance;
+        });
+        return distance;
+      }
+      function render(self) {
+        const offset = self.progress * ends[ends.length - 1];
+        const i = ends.findIndex(end => offset <= end);
+        if (i < 0) return;
+        if (current !== i) {
+          if (current === steps.length - 1) finishSummary();
+          if (current !== -1) flaps[i].restart();
+          steps[current]?.classList.remove("is-current");
+          steps[i].classList.add("is-current");
+          current = i;
         }
+        const start = ends[i - 1] || 0;
+        animations[i].progress((offset - start) / (ends[i] - start), false);
+        if (i === steps.length - 1 && !summaryStarted) {
+          summaryStarted = true;
+          summary.play();
+        }
+      }
+      ScrollTrigger.create({
+        trigger: stage, pin: true, start: "top top", refreshPriority: 1,
+        end: () => "+=" + measure(), onUpdate: render, onRefresh: render, onLeave: finishSummary
       });
-      cleanups.push(() => section.classList.remove("catch-pinned"));
+      cleanups.push(() => {
+        section.classList.remove("catch-pinned");
+        steps.forEach(step => step.classList.remove("is-current"));
+      });
     } else {
       steps.forEach((step, i) => {
         ScrollTrigger.create({
           trigger: step, start: "top 85%", once: true,
           onEnter: () => {
+            if (i > 0) flaps[i].play();
             animations[i].play();
             if (i === steps.length - 1) summary.play();
-          }
+          },
+          onLeave: i === steps.length - 1 ? finishSummary : undefined,
+          onLeaveBack: () => { if (summary.isActive()) finishSummary(); }
         });
       });
     }

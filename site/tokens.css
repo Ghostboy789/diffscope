@@ -1,5 +1,6 @@
 :root {
-  color-scheme: dark light;
+  color-scheme: dark;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 
   --stage: #0d0e0b;
   --panel: #17190f;
@@ -36,28 +37,25 @@
   --border: 1px solid var(--line);
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    --stage: #f1eee4;
-    --panel: #e7e3d6;
-    --ink: #0d0e0b;
-    --muted: #5c5a52;
-    --line: #c9c4b4;
-    --lime: #5f7a00;
-    --coral: #d23a1c;
-    --pink: #b8487c;
-    --on-lime: #f1eee4;
-  }
+:root[data-theme="light"] {
+  color-scheme: light;
+  --stage: #eff1ed;
+  --panel: #f9faf8;
+  --ink: #151915;
+  --muted: #50594f;
+  --line: #bdc6bc;
+  --lime: #476512;
+  --coral: #ae361c;
+  --pink: #ae3c70;
+  --on-lime: #ffffff;
 }
 
 :root {
   --gutter: clamp(var(--space-3), 4vw, var(--space-6));
   --mast-height: 4.5rem;
-  --score-size: clamp(5rem, 17vw, 15rem);
-  --score-phone: clamp(4.5rem, 24vw, 11rem);
   --micro: 0.75rem;
   --stage-space: clamp(var(--space-5), 6vw, var(--space-7));
-  --section-space: clamp(var(--space-6), 8vw, var(--space-7));
+  --section-space: clamp(2.5rem, 5vw, 4.5rem);
   --cell: clamp(var(--space-2), 1.4vw, var(--space-3));
 }
 

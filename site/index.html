@@ -3,13 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>
+    try {
+      if (localStorage.getItem("diffscope-theme") === "light") document.documentElement.dataset.theme = "light";
+    } catch {}
+  </script>
   <title>diffscope · A currency bug in a dbt pull request</title>
   <meta name="description" content="See how diffscope caught order 103 jumping from 760 to 76,000 cents in a dbt pull request. Read the DuckDB comparison, benchmark and limits.">
   <meta name="author" content="Medhansh Shekhawat">
   <meta property="og:title" content="diffscope · A currency bug in a dbt pull request">
   <meta property="og:description" content="The PR comment traced a change from 760 to 76,000 cents on one order into the customer's total. See the data and how to run the comparison.">
   <meta property="og:type" content="website">
-  <link rel="stylesheet" href="https://unpkg.com/lenis@1.3.28/dist/lenis.css">
+  <link rel="preload" as="style" href="https://unpkg.com/lenis@1.3.28/dist/lenis.css" onload="this.rel='stylesheet'">
   <link rel="stylesheet" href="tokens.css">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="pinned.css">
@@ -31,48 +36,84 @@
         <a href="#method">How it works</a>
         <a href="#benchmark">Benchmark</a>
         <a href="#quick-start">Quick start</a>
+        <button class="theme-toggle" type="button" aria-label="Light theme" aria-pressed="false" title="Toggle light theme" hidden>
+          <span class="cord-track" aria-hidden="true"><span class="cord"><i></i></span></span>
+        </button>
       </nav>
     </div>
   </header>
   <main>
     <section class="opening" id="finding" aria-labelledby="headline">
+      <svg class="data-field" width="100%" height="100%" aria-hidden="true" focusable="false">
+        <defs>
+          <text id="order-hit" x="0" y="66" xml:space="preserve">103       completed          760</text>
+          <g id="order-rows" xml:space="preserve" fill="white">
+            <text y="12">order_id  status    amount_cents</text>
+            <text y="30">101       complete           850</text>
+            <text y="48">102       placed             625</text>
+            <use href="#order-hit"/>
+            <text y="84">104       completed          490</text>
+            <text y="102">105       completed         1150</text>
+            <text y="120">106       returned           400</text>
+            <text y="138">107       completed          550</text>
+            <text y="156">108       placed             700</text>
+          </g>
+          <pattern id="order-field" width="852" height="372" patternUnits="userSpaceOnUse">
+            <use href="#order-rows"/>
+            <use href="#order-rows" y="190" opacity=".65"/>
+            <use href="#order-rows" x="282" y="78" opacity=".68"/>
+            <use href="#order-rows" x="576" y="-46" opacity=".82"/>
+            <use href="#order-rows" x="576" y="132"/>
+            <use href="#order-rows" x="576" y="326" opacity=".82"/>
+          </pattern>
+          <pattern id="hot-row" width="852" height="372" patternUnits="userSpaceOnUse"><use href="#order-hit" fill="white"/></pattern>
+          <pattern id="impact-dots" width="5" height="5" patternUnits="userSpaceOnUse"><rect width="2.5" height="2.5" fill="white"/></pattern>
+          <mask id="dither"><rect width="100%" height="100%" fill="url(#impact-dots)"/></mask>
+          <mask id="ascii"><rect width="100%" height="100%" fill="url(#order-field)"/></mask>
+          <mask id="changed-row"><rect width="100%" height="100%" fill="url(#hot-row)"/></mask>
+          <linearGradient id="field-density" x2="100%" y2="0" gradientUnits="objectBoundingBox">
+            <stop stop-color="var(--lime)" stop-opacity=".035"/><stop offset=".62" stop-color="var(--lime)" stop-opacity=".085"/>
+            <stop offset="1" stop-color="var(--lime)" stop-opacity=".40"/>
+          </linearGradient>
+          <radialGradient id="develop"><stop stop-color="var(--lime)" stop-opacity=".65"/><stop offset="1" stop-color="var(--lime)" stop-opacity="0"/></radialGradient>
+          <radialGradient id="thermal" gradientUnits="userSpaceOnUse" cx="76%" cy="39%" r="205">
+            <stop stop-color="var(--pink)"/><stop offset=".38" stop-color="var(--pink)"/>
+            <stop offset=".72" stop-color="var(--coral)"/><stop offset="1" stop-color="var(--coral)" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <g mask="url(#ascii)">
+          <rect width="100%" height="100%" fill="url(#field-density)"/>
+          <circle class="develop" cx="0" cy="0" r="120" fill="url(#develop)" visibility="hidden"/>
+        </g>
+        <g class="thermal-cells" fill="url(#thermal)">
+          <rect width="100%" height="100%" opacity=".19"/>
+          <rect width="100%" height="100%" mask="url(#dither)" opacity=".92"/>
+          <rect width="100%" height="100%" mask="url(#changed-row)"/>
+        </g>
+      </svg>
       <div class="page-width scoreboard">
         <p class="address"><a href="https://github.com/Ghostboy789/diffscope/pull/1">PR #1</a> · jaffle_demo/orders · order 103 · amount_cents</p>
         <div class="hero-main">
-          <div class="readout">
-            <p class="baseline">Before <strong>760 cents</strong> <span aria-hidden="true">→</span> After</p>
-            <div class="score">
-              <span class="sr-only">After, in cents</span>
-              <span class="odometer">76,000</span>
-              <span class="stamp">×100</span>
-            </div>
-            <h1 id="headline">One order. One wrong unit.</h1>
-            <p class="hero-subline">diffscope caught it before merge.</p>
+          <p class="baseline">Before <strong>760 cents</strong> <span aria-hidden="true">→</span> After</p>
+          <div class="score">
+            <span class="sr-only">After, in cents</span>
+            <span class="odometer" data-final="76,000">76,000</span>
+            <span class="stamp">×100<i class="stamp-flash" aria-hidden="true"></i></span>
           </div>
-          <figure class="scope">
-            <div class="scope-view">
-              <svg viewBox="0 0 360 216" aria-hidden="true" class="scope-map">
-                <defs><pattern id="scope-grid" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24"/></pattern></defs>
-                <rect width="360" height="216" fill="url(#scope-grid)"/>
-                <g class="sight">
-                  <path d="M0 84h360M216 0v216" stroke-dasharray="2 6"/>
-                  <circle cx="216" cy="84" r="55" stroke-dasharray="2 5"/>
-                  <path d="M216 23v10m0 102v10m-61-61h10m102 0h10"/>
-                </g>
-                <path class="scope-corners" d="M1 21V1h20m318 0h20v20M1 195v20h20m318 0h20v-20"/>
-                <g class="scope-points"><circle cx="48" cy="84" r="4"/><circle cx="132" cy="84" r="4"/><circle class="scope-hit" cx="216" cy="84" r="40"/><circle cx="300" cy="84" r="4"/><circle cx="48" cy="168" r="4"/><circle cx="132" cy="168" r="4"/><circle cx="216" cy="168" r="4"/><circle cx="300" cy="168" r="4"/></g>
-              </svg>
-              <canvas class="scope-canvas" aria-hidden="true"></canvas>
-            </div>
-            <figcaption><span>8 orders</span><span class="scope-key">Order 103</span></figcaption>
-          </figure>
         </div>
         <div class="hero-foot">
-          <div class="hero-actions">
-            <a class="action primary" href="#catch-start">See the catch ↓</a>
-            <a class="action secondary" href="https://github.com/Ghostboy789/diffscope">GitHub <span aria-hidden="true">↗</span></a>
+          <div>
+            <h1 id="headline">One order. One wrong unit.</h1>
+            <p class="hero-subline">diffscope caught it before merge.</p>
+            <div class="hero-actions">
+              <a class="action primary" href="#catch-start">See the catch ↓</a>
+              <a class="action secondary" href="https://github.com/Ghostboy789/diffscope">GitHub <span aria-hidden="true">↗</span></a>
+            </div>
           </div>
-          <p class="demo-source">Exact values from the synthetic Jaffle Shop demo.</p>
+          <div class="hero-caption">
+            <p class="field-key"><span>8 orders</span><span>Order 103</span></p>
+            <p class="demo-source">Exact values from the synthetic Jaffle Shop demo.</p>
+          </div>
         </div>
       </div>
       <span id="catch-start" class="catch-anchor" aria-hidden="true"></span>
@@ -89,11 +130,8 @@
 
     <div class="catch-steps">
       <article class="catch-step">
-        <div class="catch-note">
-          <span class="catch-position" aria-hidden="true"><b>1</b> / 5</span>
-          <h3>The row counts hold</h3>
-          <p>Both models kept the same keys. The comment still found changes within matching rows.</p>
-        </div>
+        <div class="step-heading"><span class="catch-position" aria-hidden="true"><b>1</b> / 5</span><h3>The row counts hold</h3></div>
+        <div class="catch-note"><p>Both models kept the same keys. The comment still found changes within matching rows.</p></div>
         <div class="catch-evidence">
           <table class="catch-table">
             <caption>Rows by model</caption>
@@ -107,11 +145,8 @@
       </article>
 
       <article class="catch-step">
-        <div class="catch-note">
-          <span class="catch-position" aria-hidden="true"><b>2</b> / 5</span>
-          <h3>The intended rename</h3>
-          <p>On order <code>101</code>, the change to <code>status</code> adds a single letter.</p>
-        </div>
+        <div class="step-heading"><span class="catch-position" aria-hidden="true"><b>2</b> / 5</span><h3>The intended rename</h3></div>
+        <div class="catch-note"><p>On order <code>101</code>, the change to <code>status</code> adds a single letter.</p></div>
         <figure class="catch-evidence">
           <figcaption>Order <code>101</code> · <code>status</code></figcaption>
           <dl class="catch-readout">
@@ -122,11 +157,8 @@
       </article>
 
       <article class="catch-step">
-        <div class="catch-note">
-          <span class="catch-position" aria-hidden="true"><b>3</b> / 5</span>
-          <h3>The currency bug</h3>
-          <p>Order <code>103</code> was already in cents. Its amount grew by a factor of <code class="catch-effect">100</code>.</p>
-        </div>
+        <div class="step-heading"><span class="catch-position" aria-hidden="true"><b>3</b> / 5</span><h3>The currency bug</h3></div>
+        <div class="catch-note"><p>Order <code>103</code> was already in cents. Its amount grew by a factor of <code class="catch-effect">100</code>.</p></div>
         <figure class="catch-evidence" data-catch-zoom>
           <figcaption>Order <code>103</code> · <code>amount_cents</code></figcaption>
           <dl class="catch-readout">
@@ -138,11 +170,8 @@
       </article>
 
       <article class="catch-step">
-        <div class="catch-note">
-          <span class="catch-position" aria-hidden="true"><b>4</b> / 5</span>
-          <h3>The customer total follows</h3>
-          <p>Order <code>103</code> belongs to customer <code>2</code>. The higher order amount carries into the <code>customers</code> model.</p>
-        </div>
+        <div class="step-heading"><span class="catch-position" aria-hidden="true"><b>4</b> / 5</span><h3>The customer total follows</h3></div>
+        <div class="catch-note"><p>Order <code>103</code> belongs to customer <code>2</code>. The higher order amount carries into the <code>customers</code> model.</p></div>
         <figure class="catch-evidence" data-catch-customer>
           <figcaption>Customer <code>2</code> · <code>total_amount_cents</code></figcaption>
           <div class="catch-lineage">
@@ -152,25 +181,22 @@
           </div>
           <dl class="catch-readout">
             <div><dt>Before</dt><dd>1,250<span class="catch-track" aria-hidden="true"><i class="catch-customer-before"></i></span></dd></div>
-            <div><dt><i class="catch-gutter" aria-hidden="true">+</i>After</dt><dd class="catch-effect"><span data-catch-count>76,490</span><span class="catch-track" aria-hidden="true"><i class="catch-customer-after"></i></span></dd></div>
+            <div><dt><i class="catch-gutter" aria-hidden="true">+</i>After</dt><dd class="catch-effect"><span>76,490</span><span class="catch-track" aria-hidden="true"><i class="catch-customer-after"></i></span></dd></div>
           </dl>
         </figure>
       </article>
 
       <article class="catch-step">
-        <div class="catch-note">
-          <span class="catch-position" aria-hidden="true"><b>5</b> / 5</span>
-          <h3>Across all orders</h3>
-          <p>The sum of <code>amount_cents</code> rose <code class="catch-effect">1,361.8%</code>. A single order moved both the mean and the upper end of the distribution.</p>
-        </div>
+        <div class="step-heading"><span class="catch-position" aria-hidden="true"><b>5</b> / 5</span><h3>Across all orders</h3></div>
+        <div class="catch-note"><p>The sum of <code>amount_cents</code> rose <code class="catch-effect">1,361.8%</code>. A single order moved both the mean and the upper end of the distribution.</p></div>
         <div class="catch-evidence">
           <table class="catch-table">
             <caption>All orders · <code data-catch-scramble>amount_cents</code></caption>
             <thead><tr><th scope="col">Statistic</th><th scope="col">Before</th><th scope="col">After</th></tr></thead>
             <tbody>
-              <tr><th scope="row"><i class="catch-gutter" aria-hidden="true">+</i>Sum</th><td>5,525.0</td><td class="catch-effect"><span data-catch-count>80,765.0</span></td></tr>
-              <tr><th scope="row"><i class="catch-gutter" aria-hidden="true">+</i>Mean</th><td>690.62</td><td class="catch-effect"><span data-catch-count>10,095.62</span></td></tr>
-              <tr><th scope="row"><i class="catch-gutter" aria-hidden="true">+</i>P95</th><td>1,045.0</td><td class="catch-effect"><span data-catch-count>49,802.5</span></td></tr>
+              <tr><th scope="row"><i class="catch-gutter" aria-hidden="true">+</i>Sum</th><td>5,525.0</td><td class="catch-effect"><span data-catch-count data-final="80,765.0">80,765.0</span></td></tr>
+              <tr><th scope="row"><i class="catch-gutter" aria-hidden="true">+</i>Mean</th><td>690.62</td><td class="catch-effect"><span data-catch-count data-final="10,095.62">10,095.62</span></td></tr>
+              <tr><th scope="row"><i class="catch-gutter" aria-hidden="true">+</i>P95</th><td>1,045.0</td><td class="catch-effect"><span data-catch-count data-final="49,802.5">49,802.5</span></td></tr>
             </tbody>
           </table>
         </div>
@@ -182,14 +208,14 @@
     <a href="https://github.com/Ghostboy789/diffscope/pull/1">Read the comment on PR <code>#1</code></a>
   </footer>
 </section>
-    <section class="article-section page-width" id="comment" aria-labelledby="comment-title">
+    <section class="article-section" id="comment" aria-labelledby="comment-title">
       <header class="section-intro">
         <h2 id="comment-title">The PR comment</h2>
         <p>Both models kept the same row count. The comment shows which values changed.</p>
         <a class="source" href="https://github.com/Ghostboy789/diffscope/pull/1">Read the full comment on GitHub</a>
       </header>
       <figure class="evidence">
-        <figcaption class="label">Jaffle Shop · comment excerpt</figcaption>
+        <figcaption class="comment-head"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 3h14v10H8l-4 4v-4H3z"/></svg><b>diffscope</b> <span>Jaffle Shop · comment excerpt</span></figcaption>
         <div class="model-pair">
           <section aria-labelledby="orders-title">
             <h3 class="model-name" id="orders-title">orders</h3>
@@ -217,9 +243,9 @@
               <caption>Numeric shifts <code>amount_cents</code></caption>
               <thead><tr><th scope="col">Statistic</th><th scope="col">Before</th><th scope="col">After</th></tr></thead>
               <tbody>
-                <tr><th scope="row">Mean</th><td>690.62</td><td class="bug">10,095.62</td></tr>
-                <tr><th scope="row">P95</th><td>1,045.0</td><td class="bug">49,802.5</td></tr>
-                <tr><th scope="row">Sum</th><td>5,525.0</td><td class="bug">80,765.0</td></tr>
+                <tr><th scope="row">Mean</th><td>690.62</td><td class="bug" data-final="10,095.62">10,095.62</td></tr>
+                <tr><th scope="row">P95</th><td>1,045.0</td><td class="bug" data-final="49,802.5">49,802.5</td></tr>
+                <tr><th scope="row">Sum</th><td>5,525.0</td><td class="bug" data-final="80,765.0">80,765.0</td></tr>
               </tbody>
             </table>
             <table class="data-table examples">
@@ -254,10 +280,10 @@
               <caption>Numeric shifts <code>total_amount_cents</code></caption>
               <thead><tr><th scope="col">Statistic</th><th scope="col">Before</th><th scope="col">After</th></tr></thead>
               <tbody>
-                <tr><th scope="row">Mean</th><td>1,381.25</td><td class="bug">20,191.25</td></tr>
-                <tr><th scope="row">Median</th><td>1,637.5</td><td class="bug">2,137.5</td></tr>
-                <tr><th scope="row">P95</th><td>2,216.25</td><td class="bug">65,354.0</td></tr>
-                <tr><th scope="row">Sum</th><td>5,525.0</td><td class="bug">80,765.0</td></tr>
+                <tr><th scope="row">Mean</th><td>1,381.25</td><td class="bug" data-final="20,191.25">20,191.25</td></tr>
+                <tr><th scope="row">Median</th><td>1,637.5</td><td class="bug" data-final="2,137.5">2,137.5</td></tr>
+                <tr><th scope="row">P95</th><td>2,216.25</td><td class="bug" data-final="65,354.0">65,354.0</td></tr>
+                <tr><th scope="row">Sum</th><td>5,525.0</td><td class="bug" data-final="80,765.0">80,765.0</td></tr>
               </tbody>
             </table>
             <table class="data-table examples">
@@ -272,7 +298,13 @@
     </section>
 
     <section class="article-section page-width" id="method" aria-labelledby="method-title">
-      <header class="section-intro"><h2 id="method-title">How it works</h2></header>
+      <header class="section-intro"><h2 id="method-title">How it works</h2>
+        <svg class="method-flow" viewBox="0 0 310 144" role="img" aria-labelledby="flow-title">
+          <title id="flow-title">Baseline → join on key → compare → comment</title>
+          <g class="flow-labels"><text x="12" y="30">baseline</text><text x="166" y="30">join on key</text><text x="166" y="119">compare</text><text x="12" y="119">comment</text></g>
+          <g class="flow-lines" fill="none"><path d="M93 23Q115 20 147 23m-8 -6 9 6 -10 5"/><path d="M212 42Q218 66 211 94m-6 -9 6 10 7 -9"/><path d="M151 114Q125 118 93 114m8 -5 -9 5 9 6"/></g>
+        </svg>
+      </header>
       <div class="prose">
         <p>DuckDB checks that the key identifies each row uniquely in both versions. A full outer join on the key finds rows that appear on just one side and marks them as added or removed.</p>
         <p>For matching keys, two <code>NULL</code>s count as equal. A <code>NULL</code> paired with a value counts as a change. For numeric columns of the same type, <code>diffscope tables --tolerance</code> treats absolute differences up to the threshold as equal. The default is <span class="number">0</span>.</p>
@@ -293,15 +325,15 @@
           <tbody>
             <tr>
               <th scope="row">100,000</th><td>1,000</td>
-              <td><span class="timing-value">0.023</span><svg class="timing-track" viewBox="0 0 655 8" preserveAspectRatio="none" aria-hidden="true"><rect width="23" height="8"/></svg></td>
+              <td><span class="timing-value" data-final="0.023">0.023</span><svg class="timing-track" viewBox="0 0 655 8" preserveAspectRatio="none" aria-hidden="true"><rect width="23" height="8"/></svg></td>
             </tr>
             <tr>
               <th scope="row">1,000,000</th><td>10,000</td>
-              <td><span class="timing-value">0.084</span><svg class="timing-track" viewBox="0 0 655 8" preserveAspectRatio="none" aria-hidden="true"><rect width="84" height="8"/></svg></td>
+              <td><span class="timing-value" data-final="0.084">0.084</span><svg class="timing-track" viewBox="0 0 655 8" preserveAspectRatio="none" aria-hidden="true"><rect width="84" height="8"/></svg></td>
             </tr>
             <tr>
               <th scope="row">10,000,000</th><td>100,000</td>
-              <td><span class="timing-value">0.655</span><svg class="timing-track" viewBox="0 0 655 8" preserveAspectRatio="none" aria-hidden="true"><rect width="655" height="8"/></svg></td>
+              <td><span class="timing-value" data-final="0.655">0.655</span><svg class="timing-track" viewBox="0 0 655 8" preserveAspectRatio="none" aria-hidden="true"><rect width="655" height="8"/></svg></td>
             </tr>
           </tbody>
         </table>
@@ -338,7 +370,7 @@
         <p>Run these commands from the repository root with Python <span class="number">3.10</span> or newer.</p>
         <a class="source" href="https://github.com/Ghostboy789/diffscope#quick-start">Repository instructions</a>
       </header>
-      <div class="instructions">
+      <div class="instructions"><div class="terminal-title"><span aria-hidden="true">❯_</span> diffscope / shell</div>
         <h3>Install diffscope</h3>
         <pre><code>python -m pip install .</code></pre>
         <h3>Compare tables or files</h3>
@@ -371,7 +403,7 @@ concurrency:
     </section>
 
     <section class="article-section page-width" id="limits" aria-labelledby="limits-title">
-      <header class="section-intro"><h2 id="limits-title">Limits</h2></header>
+      <header class="section-intro"><h2 id="limits-title">Limits</h2><span class="limits-rule" aria-hidden="true"></span></header>
       <div class="prose">
         <ul class="limits-list">
           <li>The dbt integration supports the DuckDB adapter only.</li>
@@ -391,16 +423,18 @@ concurrency:
       <a href="https://github.com/Ghostboy789/diffscope">Repository</a>
     </nav>
   </footer>
-  <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/gsap.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/ScrollTrigger.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/SplitText.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/ScrambleTextPlugin.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/DrawSVGPlugin.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/Flip.min.js"></script>
-  <script src="https://unpkg.com/lenis@1.3.28/dist/lenis.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/gsap.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/ScrollTrigger.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/SplitText.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/ScrambleTextPlugin.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/DrawSVGPlugin.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/Flip.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/Draggable.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/InertiaPlugin.min.js"></script>
+  <script defer src="https://unpkg.com/lenis@1.3.28/dist/lenis.min.js"></script>
+  <script src="counts.js" defer></script>
   <script src="page.js" defer></script>
   <script src="hero.js" defer></script>
   <script src="catch.js" defer></script>
-  <script src="backdrop.js" defer></script>
 </body>
 </html>
