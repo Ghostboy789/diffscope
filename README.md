@@ -4,6 +4,8 @@ diffscope shows what changed in your data when you change a SQL or dbt model. It
 
 ## What the comment looks like
 
+This is the original PR #1 comment. The current format leads with key type changes and the strongest numeric signal, and shows when details are omitted. [PR #1](https://github.com/Ghostboy789/diffscope/pull/1)
+
 The demo shows an intended status rename on order `101` and a currency-unit bug on order `103`. The bug changes the order from 760 to 76,000 cents and also raises the affected customer's total. These are exact values from the synthetic [Jaffle Shop demo](examples/jaffle_demo/).
 
 **`orders`** — 2 rows changed and the sum of `amount_cents` rose 1,361.8% (5,525.0 to 80,765.0).
@@ -191,7 +193,11 @@ diffscope dbt --project-dir examples/jaffle_demo --models orders customers \
   --base-schema baseline --target-schema candidate
 ```
 
-The command reads `meta.diffscope_keys` from the dbt manifest. Use `--key` to override the manifest keys or `--db` to choose the DuckDB file.
+The command reads `meta.diffscope_keys` from the dbt manifest. Use `--key` to override the manifest keys. Use `--db` to choose the target DuckDB file and `--base-db` if the base models are built in a separate local DuckDB file. Both files open read-only. If a relation is missing, diffscope names the model and the side to build.
+
+For CI, use `--max-affected-rows N` with either command. diffscope writes the report and exits with code `3` when added, removed, and changed rows together exceed `N` in any one comparison. Schema and numeric summaries are reported independently of the gate. A completed comparison within the limit exits with `0`. Comparison errors use `1`, and invalid arguments use `2`.
+
+Both commands accept `--tolerance`, `--sample-rows`, `--memory-limit`, and `--format json`. Use `--sample-rows 0` to skip examples. The default DuckDB memory limit is 4 GB. dbt JSON returns a `models` array with a `model` name and a `diff` result for each requested model.
 
 ### Post to a pull request
 
@@ -217,11 +223,13 @@ After checkout, Python setup, and the build of both dbt schemas, add the compari
     target-schema: candidate
 ```
 
+For separate local snapshots, set the action's `base-db` and `db` inputs. The Markdown report limits long tables and shows how much was omitted. If a combined dbt report exceeds 60,000 UTF-8 bytes, it shows model verdicts with an omission notice. JSON retains the underlying counts and column details.
+
 ## How it works
 
 - DuckDB checks that the key columns uniquely identify rows on each side, then joins the two versions with a full outer join. Keys found on only one side identify added or removed rows.
-- Matching is null-safe. Two `NULL`s are equal, and a `NULL` paired with a value is a change. For numeric columns with the same type, the `tables` command's `--tolerance` treats gaps at or below the specified absolute tolerance as equal. The default is zero.
-- The diff lists added, removed, and retyped columns. Shared columns whose types changed are compared as text. Numeric summaries use the full version on each side, including added and removed rows.
+- Matching is null-safe. Two `NULL`s are equal, and a `NULL` paired with a value is a change. Text keys match by exact UTF-8 value so a collation on one side cannot create extra matches. Both commands accept a finite, nonnegative absolute `--tolerance` for same-type numeric columns. The default is zero.
+- Identifiers follow DuckDB's ASCII case rules and preserve whitespace. The diff lists added, removed, and retyped columns. Retyped values are compared as text, and retyped keys are checked for collisions after the text cast. Numeric summaries use the full version on each side, including added and removed rows.
 - The checks, joins, counts, and summaries run in DuckDB SQL. Python runs the queries and formats the result.
 
 ## Benchmark
@@ -231,8 +239,8 @@ DuckDB 2.0.1 on Darwin arm64 with a 4 GB DuckDB memory limit. Each duration is a
 | Rows per side | Changed rows | Wall-clock seconds |
 | ---: | ---: | ---: |
 | 100,000 | 1,000 | 0.023 |
-| 1,000,000 | 10,000 | 0.084 |
-| 10,000,000 | 100,000 | 0.655 |
+| 1,000,000 | 10,000 | 0.071 |
+| 10,000,000 | 100,000 | 0.541 |
 
 ## Tests with known answers
 
@@ -254,7 +262,8 @@ Each scenario starts with 1,000 synthetic rows. The counts and aggregate values 
 - The dbt integration currently supports the DuckDB adapter only.
 - The key or key combination must be unique in each version.
 - Both versions of each dbt model must be built before comparison.
-- Cross-database diffs are outside the current scope.
+- The dbt command can compare two local DuckDB files. For other engines, export each version to CSV or Parquet and use the `tables` command.
+- Views and SQL queries should return stable rows throughout a comparison. Wide diffs can be more expensive with samples enabled.
 
 Datafold archived its widely used open-source table comparison tool in May 2024. [datafold/data-diff archive](https://github.com/datafold/data-diff)
 

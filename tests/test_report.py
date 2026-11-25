@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from diffscope.report import render_markdown
-from diffscope.result import DiffResult, SchemaDiff
+from diffscope.report import combine_model_reports, render_markdown
+from diffscope.result import ColumnChange, DiffResult, SchemaDiff
 
 
 @pytest.fixture
@@ -41,7 +41,7 @@ def identical(example):
 
 def test_fixture_comment(example):
     assert render_markdown(example) == """\
-6 rows were added, 2 rows were removed, 37 rows changed, the sum of `amount` fell 3.3% (642,000.0 to 620,974.0), and the schema changed.
+The sum of `amount` fell 3.3% (642,000.0 to 620,974.0), 6 rows were added, 2 rows were removed, 37 rows changed, and the schema changed.
 
 | Rows | Count |
 | --- | --- |
@@ -52,12 +52,10 @@ def test_fixture_comment(example):
 | Changed | 37 |
 | Unchanged | 961 |
 
-### Most changed columns
+### Schema changes
 
-| Column | Changed rows | NULL to value | Value to NULL |
-| --- | --- | --- | --- |
-| `amount` | 31 | 0 | 2 |
-| `status` | 6 | 0 | 0 |
+- Added column `discount_code`
+- Changed type of `status` from INTEGER to VARCHAR
 
 ### Numeric shifts
 
@@ -68,15 +66,17 @@ def test_fixture_comment(example):
 | `amount` | P95 | 1,490.0 | 1,402.0 | -88.0 | -5.91% |
 | `amount` | Sum | 642,000.0 | 620,974.0 | -21,026.0 | -3.28% |
 
-### Schema changes
+### Most changed columns
 
-- Added column `discount_code`
-- Changed type of `status` from INTEGER to VARCHAR
+| Column | Changed rows | NULL to value | Value to NULL |
+| --- | --- | --- | --- |
+| `amount` | 31 | 0 | 2 |
+| `status` | 6 | 0 | 0 |
 
 ### Example rows
 
 <details>
-<summary>Added rows</summary>
+<summary>Added rows (1 of 6)</summary>
 
 | `order_id` | `amount` | `status` |
 | --- | --- | --- |
@@ -85,7 +85,7 @@ def test_fixture_comment(example):
 </details>
 
 <details>
-<summary>Removed rows</summary>
+<summary>Removed rows (1 of 2)</summary>
 
 | `order_id` | `amount` | `status` |
 | --- | --- | --- |
@@ -94,7 +94,7 @@ def test_fixture_comment(example):
 </details>
 
 <details>
-<summary>Changed rows</summary>
+<summary>Changed rows (1 of 37)</summary>
 
 | `order_id` | `column` | `before` | `after` |
 | --- | --- | --- | --- |
@@ -156,7 +156,7 @@ def test_samples_truncate_and_escape_untrusted_text(example):
     sample = comment.split("### Example rows\n\n", 1)[1]
     header, divider, row = [line for line in sample.splitlines() if line.startswith("|")]
 
-    assert comment.startswith("**`New [orders] <review>`** — 6 rows were added")
+    assert comment.startswith("**`New [orders] <review>`** — The sum of `amount` fell")
     assert divider == "| --- |"
     assert row.count("|") == 2
     assert header == r"| `` `header\|*_[field] name `` |"
@@ -193,7 +193,7 @@ def test_changed_sample_formats_nested_key_names(example):
     )
 
 
-def test_verdict_orders_rows_then_changes_then_numbers_then_schema(identical):
+def test_verdict_leads_with_the_strongest_numeric_shift(identical):
     shift = replace(identical.numeric_shifts[0], before_sum=100, after_sum=150)
     result = replace(
         identical, added_rows=2, removed_rows=1, changed_rows=3,
@@ -201,6 +201,52 @@ def test_verdict_orders_rows_then_changes_then_numbers_then_schema(identical):
     )
 
     assert render_markdown(result).splitlines()[0] == (
-        "2 rows were added, 1 row was removed, 3 rows changed, "
-        "the sum of `amount` rose 50.0% (100.0 to 150.0), and the schema changed."
+        "The sum of `amount` rose 50.0% (100.0 to 150.0), "
+        "2 rows were added, 1 row was removed, 3 rows changed, and the schema changed."
     )
+
+
+def test_wide_report_counts_omissions_and_keeps_key_and_verdict(example):
+    columns = [f"c{index:02}" for index in range(20)]
+    long_name = "界" * 200
+    shift = example.numeric_shifts[0]
+    result = replace(
+        example,
+        schema=SchemaDiff(columns, [], {"order_id": ["INTEGER", "VARCHAR"]}),
+        column_changes=[ColumnChange(column, 1, 0, 0) for column in reversed(columns)],
+        numeric_shifts=[replace(shift, column=column) for column in columns] + [
+            replace(shift, column=long_name, before_sum=1, after_sum=1000),
+        ],
+        samples={"added": [{**dict.fromkeys(columns, 0), "order_id": 42}]},
+    )
+
+    markdown = render_markdown(result)
+    assert markdown.startswith("Key column `order_id` changed type, the sum of")
+    assert "界" * 80 not in markdown
+    assert "9 more schema changes." in markdown
+    assert "68 more numeric shifts." in markdown
+    assert "8 more changed columns." in markdown
+    assert "13 more sample columns." in markdown
+    assert "<summary>Added rows (1 of 6)</summary>" in markdown
+    assert "`order_id` | `c00`" in markdown
+    assert markdown.index("| `c00` | 1 |") < markdown.index("| `c01` | 1 |")
+
+
+def test_dbt_comment_budget_preserves_complete_unicode_verdicts():
+    headline = "界" * 500
+    report = f"{headline}\n\n<details>\n" + "界" * 21_000 + "\n</details>"
+    combined = combine_model_reports([report] * 50)
+
+    assert len(combined.encode()) < 60_000
+    assert combined.splitlines()[0] == headline
+    assert "</details>" not in combined
+    shown = combined.splitlines().count(headline)
+    assert f"{50 - shown} model verdicts also omitted." in combined
+    assert "Details omitted for all 50 models" in combined
+
+
+def test_verdict_explains_tail_shift_with_unchanged_mean_and_sum(identical):
+    shift = replace(identical.numeric_shifts[0], before_p95=100, after_p95=150)
+    comment = render_markdown(replace(identical, numeric_shifts=[shift]))
+
+    assert comment.splitlines()[0] == "The P95 of `amount` rose 50.0% (100.0 to 150.0)."

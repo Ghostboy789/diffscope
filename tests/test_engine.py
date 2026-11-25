@@ -172,3 +172,120 @@ def test_parenthesized_query_and_qualified_table(con):
     assert (result.before_rows, result.after_rows, result.added_rows, result.unchanged_rows) == (1, 2, 1, 1)
     assert result.column_changes == result.numeric_shifts == []
     assert result.samples == {"added": [{"id": 2}], "removed": [], "changed": []}
+
+
+def test_retyped_key_collisions_are_rejected_before_join(con):
+    old = """(SELECT union_value(a := 1)::UNION(a INTEGER, b VARCHAR) AS id
+              UNION ALL SELECT union_value(b := '1')::UNION(a INTEGER, b VARCHAR))"""
+    new = "(SELECT '1' AS id)"
+
+    with pytest.raises(KeyNotUniqueError, match="1 duplicate key, 1 excess row after casting"):
+        diff_tables(con, old, new, ["id"])
+
+
+def test_retyped_composite_keys_still_match_as_text(con):
+    old = "(SELECT * FROM (VALUES (1, NULL, 10), (2, 0, 20)) t(id, region, value))"
+    new = "(SELECT * FROM (VALUES ('1', NULL, 15), ('02', 0, 20)) t(id, region, value))"
+
+    result = diff_tables(con, old, new, ["id", "region"])
+
+    assert result.schema.type_changes == {"id": ["INTEGER", "VARCHAR"]}
+    assert (result.added_rows, result.removed_rows, result.changed_rows) == (1, 1, 1)
+    assert result.samples["changed"] == [
+        {"id": 1, "region": None, "column": "value", "before": 10, "after": 15}
+    ]
+
+
+def test_identifiers_fold_ascii_case_but_keep_spaces_and_unicode(con):
+    old = '(SELECT 1 AS " ID ", 10 AS "Amount ", 1 AS "Å", 7 AS "_DIFFSCOPE_PRESENT")'
+    new = '(SELECT 1 AS " id ", 11 AS "amount ", 1 AS "å", 7 AS "_diffscope_present")'
+
+    result = diff_tables(con, old, new, [" Id "], ["AMOUNT ", "amount ", "Å"])
+
+    assert result.keys == [" ID "]
+    assert result.schema == SchemaDiff(added_columns=["å"], removed_columns=["Å"])
+    assert result.column_changes == [ColumnChange("Amount ", 1, 0, 0)]
+    assert result.samples["changed"] == [
+        {" ID ": 1, "column": "Amount ", "before": 10, "after": 11}
+    ]
+
+
+@pytest.mark.parametrize(("keys", "columns", "tolerance", "message"), [
+    ([], None, 0, "at least one key"),
+    ([" id "], None, 0, "present in both tables"),
+    (["id", "ID"], None, 0, "only be specified once"),
+    (["id"], ["amunt"], 0, "Unknown comparison columns: amunt"),
+    (["id"], None, float("inf"), "finite and nonnegative"),
+    (["id"], None, -1, "finite and nonnegative"),
+])
+def test_invalid_selections(con, keys, columns, tolerance, message):
+    with pytest.raises(ValueError, match=message):
+        source = "(SELECT 1 AS id, 2 AS amount)"
+        diff_tables(con, source, source, keys, columns, tolerance)
+
+
+@pytest.mark.parametrize("kind", ["UBIGINT", "HUGEINT", "UHUGEINT", "BIGNUM"])
+def test_integer_tolerance_does_not_round_large_gaps(con, kind):
+    old = f"(SELECT 1 AS id, 1::{kind} AS amount)"
+    new = f"(SELECT 1 AS id, 9007199254740994::{kind} AS amount)"
+
+    assert diff_tables(con, old, new, ["id"], tolerance=2**53).changed_rows == 1
+    assert diff_tables(con, old, new, ["id"], tolerance=2**53 + 1).unchanged_rows == 1
+    assert diff_tables(con, new, old, ["id"], tolerance=2**53).changed_rows == 1
+
+
+def test_empty_tables_and_nonfinite_float_changes(con):
+    old = """(SELECT * FROM (VALUES (1, 'NaN'::DOUBLE), (2, 'Infinity'::DOUBLE),
+        (3, '-Infinity'::DOUBLE), (4, 2::DOUBLE), (5, 1::DOUBLE)) t(id, value))"""
+    new = """(SELECT * FROM (VALUES (1, 'NaN'::DOUBLE), (2, 'Infinity'::DOUBLE),
+        (3, 0::DOUBLE), (4, 'NaN'::DOUBLE), (5, 1.1::DOUBLE)) t(id, value))"""
+
+    assert diff_tables(con, old, new, ["id"], tolerance=0.2).changed_rows == 2
+    empty = f"(SELECT * FROM {old} WHERE FALSE)"
+    result = diff_tables(con, empty, empty, ["id"])
+    assert (result.before_rows, result.after_rows, result.unchanged_rows) == (0, 0, 0)
+    assert result.numeric_shifts == [NumericShift("value", *([None] * 8))]
+
+
+def test_nanosecond_timestamp_examples_keep_the_changed_digits(con):
+    old = "(SELECT 1 AS id, '2025-01-01 00:00:00.000000001'::TIMESTAMP_NS AS stamp)"
+    new = "(SELECT 1 AS id, '2025-01-01 00:00:00.000000002'::TIMESTAMP_NS AS stamp)"
+
+    result = diff_tables(con, old, new, ["id"])
+
+    assert result.samples["changed"] == [{
+        "id": 1, "column": "stamp", "before": "2025-01-01 00:00:00.000000001",
+        "after": "2025-01-01 00:00:00.000000002",
+    }]
+
+
+def test_text_key_collation_cannot_turn_two_keys_into_one_join_match(con):
+    old = "(SELECT * FROM (VALUES ('a'), ('A')) t(id))"
+    new = "(SELECT 'a' COLLATE NOCASE AS id)"
+
+    result = diff_tables(con, old, new, ["id"])
+
+    assert (result.before_rows, result.after_rows) == (2, 1)
+    assert (result.removed_rows, result.added_rows, result.unchanged_rows) == (1, 0, 1)
+    assert result.samples["removed"] == [{"id": "A"}]
+
+
+def test_native_integer_quantiles_keep_interpolation(con):
+    source = "(SELECT * FROM (VALUES (1, -1::SMALLINT), (2, 0::SMALLINT)) t(id, amount))"
+
+    stats = diff_tables(con, source, source, ["id"]).numeric_shifts[0]
+
+    assert (stats.before_median, stats.before_p95) == pytest.approx((-0.5, -0.05))
+
+
+def test_wide_comparison_can_sample_a_change_in_the_last_column(con):
+    for name, last in (("before_wide", "old"), ("after_wide", "new")):
+        fields = [f"'old' AS c{i}" for i in range(127)] + [f"'{last}' AS c127"]
+        con.execute(f"CREATE TABLE {name} AS SELECT 1 AS id, {', '.join(fields)}")
+
+    result = diff_tables(con, "before_wide", "after_wide", ["id"])
+
+    assert result.changed_rows == 1
+    assert len(result.column_changes) == 128
+    assert result.column_changes[0] == ColumnChange("c127", 1, 0, 0)
+    assert result.samples["changed"] == [{"id": 1, "column": "c127", "before": "old", "after": "new"}]

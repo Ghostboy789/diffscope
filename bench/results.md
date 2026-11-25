@@ -5,5 +5,5 @@ DuckDB 2.0.1 on Darwin arm64 with a 4 GB DuckDB memory limit. Each duration is a
 | Rows per side | Changed rows | Wall-clock seconds |
 | ---: | ---: | ---: |
 | 100,000 | 1,000 | 0.023 |
-| 1,000,000 | 10,000 | 0.084 |
-| 10,000,000 | 100,000 | 0.655 |
+| 1,000,000 | 10,000 | 0.071 |
+| 10,000,000 | 100,000 | 0.541 |

@@ -3,8 +3,25 @@
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import asdict, dataclass, field
 from typing import Any
+
+_NONFINITE = {"NaN": math.nan, "Infinity": math.inf, "-Infinity": -math.inf}
+
+
+def _json_value(value):
+    if isinstance(value, float) and not math.isfinite(value):
+        return "NaN" if math.isnan(value) else ("Infinity" if value > 0 else "-Infinity")
+    if isinstance(value, dict):
+        return {
+            (_json_value(key) if isinstance(key, (str, int, float, type(None))) else str(key)):
+            _json_value(item)
+            for key, item in value.items()
+        }
+    if isinstance(value, (list, tuple)):
+        return [_json_value(item) for item in value]
+    return value
 
 
 class KeyNotUniqueError(ValueError):
@@ -56,13 +73,24 @@ class DiffResult:
     samples: dict[str, list[dict[str, Any]]]  # "added", "removed", "changed" -> example rows
     elapsed_seconds: float
 
+    def to_dict(self) -> dict[str, Any]:
+        """Return the result fields with nonfinite values encoded as strings."""
+        return _json_value(asdict(self))
+
     def to_json(self) -> str:
-        return json.dumps(asdict(self), indent=1, default=str)
+        return json.dumps(self.to_dict(), indent=1, default=str, allow_nan=False)
 
     @classmethod
     def from_json(cls, text: str) -> DiffResult:
         d = json.loads(text)
         d["schema"] = SchemaDiff(**d["schema"])
         d["column_changes"] = [ColumnChange(**c) for c in d["column_changes"]]
-        d["numeric_shifts"] = [NumericShift(**n) for n in d["numeric_shifts"]]
+        d["numeric_shifts"] = [
+            NumericShift(**{
+                field: _NONFINITE.get(value, value) if field != "column" and isinstance(value, str)
+                else value
+                for field, value in shift.items()
+            })
+            for shift in d["numeric_shifts"]
+        ]
         return cls(**d)

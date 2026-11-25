@@ -17,20 +17,20 @@ sampling uncertainty.
 | `fanout_join` | | | | | The after table repeats 10 keys. Require `KeyNotUniqueError` with the count and three example keys. |
 | `currency_unit` | 0 | 0 | 10 | 990 | Only `amount` changes. Check the exact sum and mean and unchanged median and p95. |
 
-Use `../diffscope/.venv/bin/python -m bench.make_scenarios` from the repository root to
+Use `.venv/bin/python -m bench.make_scenarios` from the repository root to
 build the tables and regenerate the expected JSON files. Use
-`../diffscope/.venv/bin/python -m pytest -q` to check the engine results. The engine
-checks skip when the module or its implementation is missing.
+`.venv/bin/python -m pytest -q` to check the engine results.
 
 ## Benchmark
 
 Run one timed comparison for each of 100,000, 1,000,000 and 10,000,000 rows per side
 using the 1% value-change scenario and a 4 GB DuckDB memory limit. Exclude data creation
-from the timing. A run passes if the row counts and change counts match at every size.
+from the timing. A run passes if the row counts, change counts, and amount sums match
+at every size.
 Report each wall-clock measurement as one observation, without a confidence interval.
-Write results to `results.md` and record a skip if the engine is unavailable.
+The script writes `results.md` after all three checks pass.
 
-Run from the repository root with `../diffscope/.venv/bin/python -m bench.bench`.
+Run from the repository root with `.venv/bin/python -m bench.bench`.
 
 ## dbt demo
 

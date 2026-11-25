@@ -9,6 +9,7 @@ import pytest
 
 from diffscope.cli import _parser, _table_input, main
 from diffscope.dbt import COMMENT_MARKER, load_models, post_pr_comment
+from diffscope.report import combine_model_reports
 from diffscope.result import DiffResult
 
 
@@ -30,6 +31,7 @@ def contract_fakes(monkeypatch):
     engine.diff_tables = diff_tables
     report = ModuleType("diffscope.report")
     report.render_markdown = render_markdown
+    report.combine_model_reports = combine_model_reports
     monkeypatch.setitem(sys.modules, engine.__name__, engine)
     monkeypatch.setitem(sys.modules, report.__name__, report)
     return calls, result
@@ -227,3 +229,87 @@ def test_sticky_comment(tmp_path, monkeypatch, previous_id):
         assert writes == [
             (f"repos/owner/demo/issues/comments/{previous_id}", "PATCH", expected_body)
         ]
+
+
+def test_tables_row_gate_keeps_report_on_failure(tmp_path, capsys):
+    before = "(SELECT * FROM (VALUES (1, 10), (2, 20), (4, 40)) t(id, value))"
+    after = "(SELECT * FROM (VALUES (2, 21), (3, 30), (4, 40)) t(id, value))"
+    output = tmp_path / "report.json"
+    args = [
+        "tables", before, after, "--key", "id", "--format", "json",
+        "--sample-rows", "0", "--memory-limit", "128MB", "--output", str(output),
+    ]
+
+    assert main([*args, "--max-affected-rows", "2"]) == 3
+    assert "tables affected 3 rows, above the limit of 2" in capsys.readouterr().err
+    diff = json.loads(output.read_text())
+    assert (diff["added_rows"], diff["removed_rows"], diff["changed_rows"]) == (1, 1, 1)
+    assert diff["samples"] == {"added": [], "removed": [], "changed": []}
+    assert main([*args, "--max-affected-rows", "3"]) == 0
+    assert capsys.readouterr().err == ""
+
+
+def test_dbt_compares_separate_read_only_snapshots(dbt_project, capsys):
+    base = dbt_project / "it's baseline.duckdb"
+    target = dbt_project / "_diffscope_base.duckdb"
+    # Both use the same dbt schema and model aliases, backed by different local files.
+    for path, price, name in ((base, 10.0, "old"), (target, 10.5, "new")):
+        with duckdb.connect(str(path)) as con:
+            con.execute("CREATE SCHEMA dataset")
+            con.execute('CREATE TABLE dataset."order ""summary""" (id INT, price DOUBLE)')
+            con.execute('INSERT INTO dataset."order ""summary""" VALUES (1, ?)', [price])
+            con.execute("CREATE TABLE dataset.customers (customer_id INTEGER, name VARCHAR)")
+            con.execute("INSERT INTO dataset.customers VALUES (2, ?)", [name])
+    snapshots = [path.read_bytes() for path in (base, target)]
+
+    assert main([
+        "dbt", "--project-dir", str(dbt_project), "--models", "orders", "customers",
+        "--base-schema", "dataset", "--target-schema", "dataset",
+        "--base-db", str(base), "--db", str(target), "--tolerance", "0.5", "--format", "json",
+        "--max-affected-rows", "0",
+    ]) == 3
+
+    capture = capsys.readouterr()
+    orders, customers = json.loads(capture.out)["models"]
+    assert (orders["model"], customers["model"]) == ("orders", "customers")
+    assert (orders["diff"]["unchanged_rows"], customers["diff"]["changed_rows"]) == (1, 1)
+    assert customers["diff"]["samples"]["changed"] == [{
+        "customer_id": 2, "column": "name", "before": "old", "after": "new",
+    }]
+    assert "customers affected 1 row, above the limit of 0" in capture.err
+    assert "orders" not in capture.err
+    assert [path.read_bytes() for path in (base, target)] == snapshots
+
+
+@pytest.mark.parametrize("side", ["base", "target"])
+def test_dbt_names_missing_built_relation(dbt_project, capsys, side):
+    with duckdb.connect(str(dbt_project / "prod.duckdb")) as con:
+        schema = "baseline" if side == "target" else "candidate"
+        con.execute(f"CREATE SCHEMA {schema}")
+        con.execute(f'CREATE VIEW {schema}."order ""summary""" AS SELECT 1 AS id')
+    with pytest.raises(SystemExit) as error:
+        main([
+            "dbt", "--project-dir", str(dbt_project), "--models", "orders",
+            "--base-schema", "baseline", "--target-schema", "candidate",
+        ])
+    assert error.value.code == 1
+    capture = capsys.readouterr()
+    assert f"Cannot read {side} relation" in capture.err
+    assert f"Build the model in the {side} schema" in capture.err
+    assert capture.out == ""
+
+
+@pytest.mark.parametrize("content", [None, "{wrong"])
+def test_dbt_manifest_errors_point_to_manifest(tmp_path, capsys, content):
+    if content is not None:
+        (tmp_path / "target").mkdir()
+        (tmp_path / "target" / "manifest.json").write_text(content)
+    with pytest.raises(SystemExit) as error:
+        main([
+            "dbt", "--project-dir", str(tmp_path), "--models", "orders",
+            "--base-schema", "baseline", "--target-schema", "candidate",
+        ])
+    assert error.value.code == 1
+    message = capsys.readouterr().err
+    assert "target/manifest.json" in message
+    assert ("Run dbt build first" if content is None else "Could not read") in message

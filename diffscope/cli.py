@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import argparse
+import json
 import math
+import sys
 from glob import escape
 from pathlib import Path
 
 import duckdb
 
 from .dbt import load_models
+from .result import DiffResult
 
 
 def _tolerance(value: str) -> float:
@@ -17,6 +20,13 @@ def _tolerance(value: str) -> float:
     if not math.isfinite(tolerance) or tolerance < 0:
         raise argparse.ArgumentTypeError("tolerance must be finite and nonnegative")
     return tolerance
+
+
+def _nonnegative_int(value: str) -> int:
+    count = int(value)
+    if count < 0:
+        raise argparse.ArgumentTypeError("expected a nonnegative integer")
+    return count
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -29,18 +39,26 @@ def _parser() -> argparse.ArgumentParser:
     tables.add_argument("--key", action="append", required=True)
     tables.add_argument("--db", type=Path, help="DuckDB file (default: in-memory)")
     tables.add_argument("--columns", nargs="+", action="extend")
-    tables.add_argument("--tolerance", type=_tolerance, default=0.0)
-    tables.add_argument("--format", choices=("markdown", "json"), default="markdown")
-    tables.add_argument("--output", type=Path)
 
-    dbt = commands.add_parser("dbt", help="Compare built dbt models across two DuckDB schemas")
+    dbt = commands.add_parser("dbt", help="Compare two snapshots of built DuckDB dbt models")
     dbt.add_argument("--project-dir", type=Path, default=Path("."))
     dbt.add_argument("--models", nargs="+", required=True)
     dbt.add_argument("--base-schema", required=True)
     dbt.add_argument("--target-schema", required=True)
     dbt.add_argument("--key", action="append", help="Override each model's diffscope_keys")
     dbt.add_argument("--db", type=Path, help="DuckDB file (default: <catalog>.duckdb in project)")
-    dbt.add_argument("--output", type=Path)
+    dbt.add_argument("--base-db", type=Path, help="Read the base schema from a separate DuckDB file")
+
+    for command in (tables, dbt):
+        command.add_argument("--tolerance", type=_tolerance, default=0.0)
+        command.add_argument("--sample-rows", type=_nonnegative_int, default=5)
+        command.add_argument("--format", choices=("markdown", "json"), default="markdown")
+        command.add_argument("--output", type=Path)
+        command.add_argument("--memory-limit", default="4GB", help="DuckDB memory limit (default: 4GB)")
+        command.add_argument(
+            "--max-affected-rows", type=_nonnegative_int, metavar="N",
+            help="Exit 3 if added + removed + changed rows exceed N in any comparison",
+        )
     return parser
 
 
@@ -58,34 +76,32 @@ def _table_input(source: str) -> str:
     return f"(SELECT * FROM {reader}('{literal}'))"
 
 
-def _connect(db: Path | None) -> duckdb.DuckDBPyConnection:
+def _connect(db: Path | None, memory_limit: str) -> duckdb.DuckDBPyConnection:
+    if db is not None:
+        db = db.expanduser()
+        if not db.is_file():
+            raise FileNotFoundError(f"DuckDB file does not exist: {db}")
     return duckdb.connect(
-        str(db.expanduser()) if db is not None else ":memory:",
+        str(db) if db is not None else ":memory:",
         read_only=db is not None,
-        config={"memory_limit": "4GB"},
+        config={"memory_limit": memory_limit},
     )
 
 
-def _compare_tables(args: argparse.Namespace) -> str:
+def _compare_tables(args: argparse.Namespace) -> DiffResult:
     from .engine import diff_tables
 
     before = _table_input(args.before)
     after = _table_input(args.after)
-    with _connect(args.db) as con:
-        result = diff_tables(
-            con, before, after, args.key, columns=args.columns, tolerance=args.tolerance
+    with _connect(args.db, args.memory_limit) as con:
+        return diff_tables(
+            con, before, after, args.key, columns=args.columns, tolerance=args.tolerance,
+            sample_rows=args.sample_rows,
         )
-    if args.format == "json":
-        return result.to_json()
-
-    from .report import render_markdown
-
-    return render_markdown(result)
 
 
-def _compare_dbt(args: argparse.Namespace) -> str:
+def _compare_dbt(args: argparse.Namespace) -> list[tuple[str, DiffResult]]:
     from .engine import diff_tables
-    from .report import render_markdown
 
     models = load_models(args.project_dir, args.models, args.key)
     db = args.db
@@ -98,33 +114,82 @@ def _compare_dbt(args: argparse.Namespace) -> str:
         if not db.is_file():
             raise FileNotFoundError(f"DuckDB file does not exist: {db}. Pass its path with --db.")
 
-    reports = []
-    with _connect(db) as con:
+    results = []
+    with _connect(db, args.memory_limit) as con:
         catalog = con.execute("SELECT current_database()").fetchone()[0]
+        base_catalog = catalog
+        if args.base_db is not None:
+            base_db = args.base_db.expanduser().resolve()
+            if base_db != db.expanduser().resolve():
+                if not base_db.is_file():
+                    raise FileNotFoundError(f"Base DuckDB file does not exist: {base_db}")
+                base_catalog = "_diffscope_base"
+                if base_catalog == catalog.lower():
+                    base_catalog += "_"
+                literal = str(base_db).replace("'", "''")
+                con.execute(f"ATTACH '{literal}' AS {base_catalog} (READ_ONLY)")
+
         for model in models:
-            result = diff_tables(
-                con,
-                model.relation(catalog, args.base_schema),
-                model.relation(catalog, args.target_schema),
-                model.keys,
-            )
-            reports.append(render_markdown(result, title=model.name).rstrip())
-    return "\n\n---\n\n".join(reports)
+            before = model.relation(base_catalog, args.base_schema)
+            after = model.relation(catalog, args.target_schema)
+            try:
+                result = diff_tables(
+                    con, before, after, model.keys,
+                    tolerance=args.tolerance, sample_rows=args.sample_rows,
+                )
+            except duckdb.CatalogException:
+                for side, relation in (("base", before), ("target", after)):
+                    try:
+                        con.execute(f"DESCRIBE SELECT * FROM {relation}")
+                    except duckdb.CatalogException as exc:
+                        raise ValueError(
+                            f"Cannot read {side} relation {relation} for model {model.name!r}. "
+                            f"Build the model in the {side} schema before comparing.\n{exc}"
+                        ) from exc
+                raise
+            results.append((model.name, result))
+    return results
 
 
 def main(argv: list[str] | None = None) -> int:
+    from .report import combine_model_reports, render_markdown
+
     parser = _parser()
     args = parser.parse_args(argv)
     try:
-        result = _compare_tables(args) if args.command == "tables" else _compare_dbt(args)
-        if args.output:
-            args.output.write_text(result.rstrip("\n") + "\n", encoding="utf-8")
+        if args.command == "tables":
+            result = _compare_tables(args)
+            results = [("tables", result)]
+            output = result.to_json() if args.format == "json" else render_markdown(result)
         else:
-            print(result.rstrip("\n"))
-    except ModuleNotFoundError as exc:
-        if exc.name not in {"diffscope.engine", "diffscope.report"}:
-            raise
-        parser.exit(1, f"{parser.prog}: required module {exc.name} is unavailable\n")
+            results = _compare_dbt(args)
+            if args.format == "json":
+                output = json.dumps(
+                    {"models": [{"model": name, "diff": diff.to_dict()} for name, diff in results]},
+                    indent=1, default=str, allow_nan=False,
+                )
+            else:
+                output = combine_model_reports([
+                    render_markdown(diff, title=name).rstrip() for name, diff in results
+                ])
+        output = output.rstrip("\n")
+        if args.output:
+            args.output.write_text(output + "\n", encoding="utf-8")
+        else:
+            print(output)
     except (OSError, ValueError, duckdb.Error) as exc:
         parser.exit(1, f"{parser.prog}: {exc}\n")
-    return 0
+
+    status = 0
+    if args.max_affected_rows is not None:
+        for name, diff in results:
+            affected = diff.added_rows + diff.removed_rows + diff.changed_rows
+            if affected > args.max_affected_rows:
+                rows = "row" if affected == 1 else "rows"
+                print(
+                    f"{parser.prog}: {name} affected {affected:,} {rows}, "
+                    f"above the limit of {args.max_affected_rows:,}",
+                    file=sys.stderr,
+                )
+                status = 3
+    return status

@@ -33,10 +33,10 @@ def diff_tables(
 ```
 
 Rules:
-- Fails with `KeyNotUniqueError` (in `result.py`) if a key repeats in either table, reporting how many duplicates and three examples.
-- NULL equals NULL for comparison purposes.
-- Columns present in only one table are reported in `schema`, never compared.
-- A changed type (e.g. INTEGER to VARCHAR) is reported in `schema.type_changes`; values are compared as text.
+- Fails before joining with `KeyNotUniqueError` if a key repeats in either table, with counts and up to three examples per side. Retyped keys are also checked after conversion to text.
+- NULL equals NULL for comparison purposes. Text key matching uses exact UTF-8 values.
+- Column names follow DuckDB's ASCII case rules and retain whitespace. Names shared across versions use the before spelling in summaries. Columns present in just one version appear only in `schema`. Requested names missing from both sides are errors.
+- A changed type (e.g. INTEGER to VARCHAR) is reported in `schema.type_changes`. Retyped values are compared as text. The absolute tolerance is finite and nonnegative and applies to same-type numeric comparisons.
 - All work happens in DuckDB SQL. Python only orchestrates. It must handle 10 million rows per side on a 16 GB machine.
 
 ## `render_markdown`
@@ -45,10 +45,11 @@ Rules:
 def render_markdown(result: DiffResult, max_rows: int = 10, title: str | None = None) -> str
 ```
 
-The comment must lead with a one-line verdict in plain English, then counts, then the columns that changed most, then numeric shifts, then example rows in collapsible `<details>` blocks. Nothing in it may be invented: every number comes from the `DiffResult`.
+The comment leads with a plain-English verdict, prioritizing key type changes and numeric shifts. Row counts, schema and numeric changes, changed columns, and collapsible examples follow when available. Display limits include omission counts. Reported figures come from the `DiffResult`.
 
 ## The data model
 
 See `diffscope/result.py` for the exact fields. A complete example lives in
-`tests/fixtures/example_result.json`, built from a known scenario, for modules that need a
-`DiffResult` before the engine exists.
+`tests/fixtures/example_result.json`. JSON encodes nonfinite floating-point values as
+`"NaN"`, `"Infinity"`, and `"-Infinity"`. Nanosecond timestamp samples are strings so
+the final three fractional digits remain visible.

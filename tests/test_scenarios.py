@@ -6,15 +6,8 @@ import duckdb
 import pytest
 
 from bench.make_scenarios import AFTER_QUERIES, EXPECTED, build_scenario
+from diffscope.engine import diff_tables
 from diffscope.result import KeyNotUniqueError
-
-
-def compare(con, before, after):
-    engine = pytest.importorskip("diffscope.engine")
-    try:
-        return engine.diff_tables(con, before, after, keys=["id"])
-    except NotImplementedError:
-        pytest.skip("diff_tables is awaiting implementation")
 
 
 @pytest.mark.parametrize("scenario", AFTER_QUERIES)
@@ -25,14 +18,14 @@ def test_scenario(scenario):
         before, after = build_scenario(con, scenario)
         if expected.get("error") == "KeyNotUniqueError":
             with pytest.raises(KeyNotUniqueError) as error:
-                compare(con, before, after)
+                diff_tables(con, before, after, keys=["id"])
 
             numbers = {int(value) for value in re.findall(r"\b\d+\b", str(error.value))}
             assert expected["duplicate_key_count"] in numbers
             assert len(numbers.intersection(expected["duplicate_keys"])) == expected["example_count"]
             return
 
-        result = compare(con, before, after)
+        result = diff_tables(con, before, after, keys=["id"])
 
     assert (result.before_name, result.after_name, result.keys) == (before, after, ["id"])
     for field in (

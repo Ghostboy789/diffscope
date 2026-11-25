@@ -25,7 +25,12 @@ class Model:
 
 def load_models(project_dir: Path, names: list[str], keys: list[str] | None) -> list[Model]:
     path = project_dir.expanduser() / "target" / "manifest.json"
-    manifest = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError as exc:
+        raise FileNotFoundError(f"DBT manifest is missing at {path}. Run dbt build first.") from exc
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Could not read DBT manifest at {path}: {exc.msg}") from exc
     adapter = manifest.get("metadata", {}).get("adapter_type")
     if adapter is not None and adapter != "duckdb":
         raise ValueError(f"Expected a DuckDB manifest, got adapter {adapter!r}")

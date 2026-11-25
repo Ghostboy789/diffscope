@@ -18,7 +18,10 @@ inputs:
     description: Whitespace-separated keys. Defaults to each model's meta.diffscope_keys.
     default: ''
   db:
-    description: DuckDB file. Defaults to <catalog>.duckdb in the project directory.
+    description: Target DuckDB file. Defaults to <catalog>.duckdb in the project directory.
+    default: ''
+  base-db:
+    description: Optional separate DuckDB file containing the base schema.
     default: ''
 runs:
   using: composite
@@ -33,6 +36,7 @@ runs:
         TARGET_SCHEMA: ${{ inputs.target-schema }}
         DBT_KEYS: ${{ inputs.keys }}
         DBT_DATABASE: ${{ inputs.db }}
+        DBT_BASE_DATABASE: ${{ inputs.base-db }}
       run: |
         work_dir=$(mktemp -d "$RUNNER_TEMP/diffscope.XXXXXX")
         python -m venv "$work_dir/venv"
@@ -45,6 +49,9 @@ runs:
           --output "$work_dir/report.md")
         if [[ -n "$DBT_DATABASE" ]]; then
           args+=(--db "$DBT_DATABASE")
+        fi
+        if [[ -n "$DBT_BASE_DATABASE" ]]; then
+          args+=(--base-db "$DBT_BASE_DATABASE")
         fi
         for key in "${keys[@]}"; do
           args+=(--key "$key")
