@@ -35,11 +35,8 @@ runs:
         DBT_DATABASE: ${{ inputs.db }}
       run: |
         work_dir=$(mktemp -d "$RUNNER_TEMP/diffscope.XXXXXX")
-        # Keep benchmark sources out of setuptools' package discovery.
-        mkdir "$work_dir/package"
-        cp -R "$GITHUB_ACTION_PATH/pyproject.toml" "$GITHUB_ACTION_PATH/diffscope" "$work_dir/package"
         python -m venv "$work_dir/venv"
-        "$work_dir/venv/bin/python" -m pip install "$work_dir/package"
+        "$work_dir/venv/bin/python" -m pip install "$GITHUB_ACTION_PATH"
 
         read -r -d '' -a models <<< "$DBT_MODELS" || true
         read -r -d '' -a keys <<< "$DBT_KEYS" || true

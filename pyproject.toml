@@ -11,6 +11,9 @@ dev = ["pytest", "ruff"]
 [project.scripts]
 diffscope = "diffscope.cli:main"
 
+[tool.setuptools]
+packages = ["diffscope"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py310"
